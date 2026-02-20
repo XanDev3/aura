@@ -37,13 +37,13 @@
 |---|---------|--------|--------|
 | B1 | ERC-8021 Builder Code | `[x]` | Go to **base.dev** -> Settings -> Builder Codes -> copy into `.env.local` |
 | B2 | Claude API key | `[x]` | **platform.anthropic.com** -> API Keys -> create key |
-| B3 | Agent wallet private key | `[ ]` | Create a fresh wallet (MetaMask, cast, or CDP portal) |
+| B3 | Agent wallet private key | `[x]` | Create a fresh wallet (MetaMask, cast, or CDP portal) |
 | B4 | Base mainnet funded: ~0.01 ETH + **$150-200 USDC** | `[ ]` | Bridge or buy directly on Base |
 | B5 | Vercel account + KV store created | `[ ]` | Vercel Dashboard -> Storage -> KV -> Create -> copy env vars |
 | B6 | Railway account for agent daemon | `[ ]` | railway.app -> New Project -> link GitHub repo |
 | B7 | 0G account + testnet tokens | `[ ]` | **build.0g.ai** -> get account + faucet tokens at faucet.0g.ai |
-| B8 | GitHub repo created and pushed | `[ ]` | `gh repo create aura-agent --public` then push `/aura` |
-| B9 | **CDP account + API keys (for x402 mainnet)** | `[ ]` | **cdp.coinbase.com** -> create account -> get API key ID + secret (free tier: 1000 tx/mo) |
+| B8 | GitHub repo created and pushed | `[x]` | `gh repo create aura-agent --public` then push `/aura` |
+| B9 | **CDP account + API keys (for x402 mainnet)** | `[x]` | **cdp.coinbase.com** -> create account -> get API key ID + secret (free tier: 1000 tx/mo) |
 
 ---
 
