@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:ai-sdk.dev)",
+      "WebSearch",
+      "WebFetch(domain:sdk.vercel.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:docs.cdp.coinbase.com)",
+      "WebFetch(domain:www.quicknode.com)",
+      "Bash(npx skills remove coinbase/agentic-wallet-skills --yes)",
+      "Bash(npx skills:*)",
+      "WebFetch(domain:ethskills.com)"
+    ]
+  }
+}
