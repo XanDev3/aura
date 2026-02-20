@@ -6,6 +6,21 @@
  * Railway will auto-restart the process if it crashes entirely.
  */
 import { runAgentTick } from "./agentRunner";
+import { checkIsPaused } from "./state";
+
+// ---------------------------------------------------------------------------
+// FUTURE: Option 2 — Adaptive Backoff (TODO when time permits)
+// See also: PROGRESS.md "Future Work" section for the full plan.
+// ---------------------------------------------------------------------------
+// Instead of a fixed 5-min interval, slow down ticking when idle:
+//   1. In revenue.ts `trackX402Revenue()`, add: kv.set("aura:last_x402_at", Date.now())
+//   2. Replace `setInterval` below with a recursive `setTimeout`
+//   3. After each tick, read `aura:last_x402_at`:
+//        - If < 1h ago  → next tick in TICK_INTERVAL_MS (5 min, normal)
+//        - If ≥ 1h ago  → next tick in 30 * 60 * 1000 ms (30 min, idle)
+//   4. Log the chosen interval so Railway logs show the backoff clearly.
+// Estimated savings: ~$0.72/day during idle vs current fixed-interval.
+// ---------------------------------------------------------------------------
 
 // Accept AGENT_INTERVAL_MINUTES (from .env.example) or AGENT_TICK_INTERVAL_MS (in ms)
 const TICK_INTERVAL_MS = process.env.AGENT_TICK_INTERVAL_MS
@@ -25,6 +40,10 @@ async function loop() {
 
 async function safeTick() {
   try {
+    if (await checkIsPaused()) {
+      console.log("[AURA Loop] Agent is paused (aura:paused=true in KV). Skipping tick.");
+      return;
+    }
     const result = await runAgentTick();
     if (!result.success) {
       console.error(`[AURA Loop] Tick #${result.tick} failed: ${result.error}`);

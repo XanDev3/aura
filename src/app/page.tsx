@@ -12,7 +12,7 @@ import { DecisionLog } from "@/components/DecisionLog";
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
 
 export default function Dashboard() {
-  const [state, setState] = useState<AgentState | null>(null);
+  const [state, setState] = useState<(AgentState & { isPaused?: boolean }) | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,9 +40,14 @@ export default function Dashboard() {
       {/* Header */}
       <header className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 pulse-dot" />
+          <div className={`w-2 h-2 rounded-full ${state?.isPaused ? "bg-yellow-500" : "bg-green-500 pulse-dot"}`} />
           <h1 className="text-2xl font-bold tracking-tight">AURA</h1>
           <span className="text-slate-400 text-sm">Autonomous Utility Revenue Agent</span>
+          {state?.isPaused && (
+            <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 border border-yellow-700 text-yellow-400 text-xs font-medium">
+              PAUSED
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4 text-xs text-slate-500">
           <span>Base Mainnet</span>

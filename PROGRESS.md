@@ -38,8 +38,8 @@
 | B1 | ERC-8021 Builder Code | `[x]` | Go to **base.dev** -> Settings -> Builder Codes -> copy into `.env.local` |
 | B2 | Claude API key | `[x]` | **platform.anthropic.com** -> API Keys -> create key |
 | B3 | Agent wallet private key | `[x]` | Create a fresh wallet (MetaMask, cast, or CDP portal) |
-| B4 | Base mainnet funded: ~0.01 ETH + **$150-200 USDC** | `[ ]` | Bridge or buy directly on Base |
-| B5 | Vercel account + KV store created | `[ ]` | Vercel Dashboard -> Storage -> KV -> Create -> copy env vars |
+| B4 | Base mainnet funded: ~0.01 ETH + **$150-200 USDC** | `[x]` | Bridge or buy directly on Base |
+| B5 | Vercel account + KV store created | `[x]` | Vercel Dashboard -> Storage -> KV -> Create -> copy env vars |
 | B6 | Railway account for agent daemon | `[x]` | railway.app -> New Project -> link GitHub repo |
 | B7 | 0G account + testnet tokens | `[x]` | **build.0g.ai** -> get account + faucet tokens at faucet.0g.ai |
 | B8 | GitHub repo created and pushed | `[x]` | `gh repo create aura-agent --public` then push `/aura` |
@@ -288,11 +288,26 @@
 
 ---
 
+## Cost Control
+
+### Agent Pause (implemented Feb 20)
+Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; delete or set `false` to resume.
+- Code: `src/lib/agent/loop.ts` (`safeTick`) + `src/lib/agent/state.ts` (`checkIsPaused`, `PAUSE_KEY`)
+- Savings: $0.86/day → $0.00 while paused. Use between demo sessions.
+
+### TODO — Adaptive Backoff (Option 2)
+> Full implementation plan is in `src/lib/agent/loop.ts` at the top of the file.
+> Summary: replace `setInterval` with recursive `setTimeout`; 30-min ticks when no x402 traffic for >1h.
+> Net savings over Option 1: ~$0.07/day. Low priority — implement only if time permits after Phase 7.
+
+---
+
 ## Stretch Goals (Only After Phases 0-7 Complete)
 
 - `[s]` Register AURA with ERC-8004 agent identity on-chain
 - `[s]` Add Limitless prediction market monitoring (read-only)
 - `[s]` Multi-agent demo: second agent buys analysis from AURA via x402
+- `[s]` Adaptive backoff (Option 2) — see loop.ts for plan
 
 ---
 
@@ -390,7 +405,7 @@
 | Live dashboard | -- |
 | GitHub repo | https://github.com/XanDev3/aura  |
 | Railway agent logs | -- |
-| Agent wallet on Basescan | -- |
+| Agent wallet on Basescan | 0x0968452513515636e0BE413d93Af64e101b299B0 |
 | Builder code checker | https://builder-code-checker.vercel.app |
 | Devfolio submission | -- |
 | Demo video | -- |

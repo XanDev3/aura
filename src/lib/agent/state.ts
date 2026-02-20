@@ -50,6 +50,13 @@ export interface AgentState {
 }
 
 const STATE_KEY = "aura:state";
+export const PAUSE_KEY = "aura:paused";
+
+/** Returns true if the agent has been manually paused via Vercel KV. */
+export async function checkIsPaused(): Promise<boolean> {
+  const flag = await kv.get<boolean>(PAUSE_KEY);
+  return flag === true;
+}
 
 export function defaultState(): AgentState {
   return {

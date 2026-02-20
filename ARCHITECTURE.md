@@ -30,23 +30,23 @@ AURA is a self-sustaining AI agent that earns more than it spends on compute —
 
 ### Cost Model (Realistic)
 
-| Item | Cost |
-|------|------|
-| Haiku tick (~1000 input + ~150 output tokens) | ~$0.002/tick |
-| 288 ticks/day (every 5 min) | ~$0.50/day |
+| Item                                                    | Cost            |
+| ------------------------------------------------------- | --------------- |
+| Haiku tick (~1000 input + ~150 output tokens)           | ~$0.002/tick    |
+| 288 ticks/day (every 5 min)                             | ~$0.50/day      |
 | Sonnet x402 analysis (~2000 input + ~500 output tokens) | ~$0.015/request |
-| Aave yield on $150 at 4% APY | ~$0.016/day |
-| Break-even x402 requests needed | ~32/day |
+| Aave yield on $150 at 4% APY                            | ~$0.016/day     |
+| Break-even x402 requests needed                         | ~32/day         |
 
 **Strategy:** Haiku handles cheap routine ticks; Aave yield + x402 service fees together cover compute. The dashboard shows trajectory toward full self-sustainability.
 
 ### Three Services
 
-| Service | Runtime | Purpose |
-|---------|---------|---------|
-| **Agent Daemon** | Railway (persistent Node.js) | AI decision loop every 5 min |
-| **Dashboard API** | Vercel (Next.js API routes) | Serves agent state to frontend |
-| **Dashboard UI** | Vercel (Next.js React) | Public read-only view for judges |
+| Service           | Runtime                      | Purpose                          |
+| ----------------- | ---------------------------- | -------------------------------- |
+| **Agent Daemon**  | Railway (persistent Node.js) | AI decision loop every 5 min     |
+| **Dashboard API** | Vercel (Next.js API routes)  | Serves agent state to frontend   |
+| **Dashboard UI**  | Vercel (Next.js React)       | Public read-only view for judges |
 
 State is shared via **Vercel KV** (Redis). Decision history is stored on **0G Storage** (decentralized).
 
@@ -60,25 +60,30 @@ The agent uses the **Vercel AI SDK v4.x** with **Claude Haiku** (routine ticks) 
 
 ```
 Every 5 minutes (Railway cron):
-  1. Read current state (KV + on-chain)
-  2. Call Claude Haiku with tools + decision prompt
-  3. Claude reasons -> calls tools (up to 5 steps via maxSteps)
-  4. Tools execute on-chain (Aave, balance reads)
-  5. Log decision to 0G Storage + KV
-  6. Update dashboard state in KV
-  7. Track token usage -> compute cost (promptTokens, completionTokens)
+  1. Check aura:paused flag in KV — skip tick if true (manual kill-switch)
+  2. Read current state (KV + on-chain)
+  3. Call Claude Haiku with tools + decision prompt
+  4. Claude reasons -> calls tools (up to 5 steps via maxSteps)
+  5. Tools execute on-chain (Aave, balance reads)
+  6. Log decision to 0G Storage + KV
+  7. Update dashboard state in KV
+  8. Track token usage -> compute cost (promptTokens, completionTokens)
 ```
+
+### Agent Pause (Cost Control)
+
+Set `aura:paused = true` in Vercel KV to skip all ticks without stopping the Railway process. Delete the key or set to `false` to resume. Implemented in `src/lib/agent/loop.ts` + `src/lib/agent/state.ts` (`checkIsPaused` / `PAUSE_KEY`). Saves ~$0.86/day while paused.
 
 ### Vercel AI SDK v4.x Specifics
 
 **IMPORTANT:** The project uses `"ai": "^4.1.0"`. These property names are v4-specific:
 
-| Concept | v4.x (this project) | v5+ (DO NOT USE) |
-|---------|---------------------|-------------------|
-| Tool schema property | `parameters` | `inputSchema` |
-| Multi-step control | `maxSteps: 5` | `stopWhen: stepCountIs(5)` |
-| Input token count | `usage.promptTokens` | `usage.inputTokens` |
-| Output token count | `usage.completionTokens` | `usage.outputTokens` |
+| Concept              | v4.x (this project)      | v5+ (DO NOT USE)           |
+| -------------------- | ------------------------ | -------------------------- |
+| Tool schema property | `parameters`             | `inputSchema`              |
+| Multi-step control   | `maxSteps: 5`            | `stopWhen: stepCountIs(5)` |
+| Input token count    | `usage.promptTokens`     | `usage.inputTokens`        |
+| Output token count   | `usage.completionTokens` | `usage.outputTokens`       |
 
 ### Model Strings (for `@ai-sdk/anthropic`)
 
@@ -89,19 +94,21 @@ import { anthropic } from "@ai-sdk/anthropic";
 const tickModel = anthropic(process.env.AGENT_TICK_MODEL || "claude-haiku-4-5");
 
 // x402 analysis service (quality)
-const analysisModel = anthropic(process.env.AGENT_ANALYSIS_MODEL || "claude-sonnet-4-5");
+const analysisModel = anthropic(
+  process.env.AGENT_ANALYSIS_MODEL || "claude-sonnet-4-5",
+);
 ```
 
 ### Claude's Available Tools
 
-| Tool | What It Does | On-Chain? |
-|------|-------------|-----------|
-| `getWalletBalance` | Read USDC + ETH balance | Read (free) |
-| `getAavePosition` | Read aUSDC balance + APY | Read (free) |
-| `supplyToAave` | Approve + Deposit USDC to Aave V3 | Write (gas) |
-| `withdrawFromAave` | Withdraw USDC from Aave V3 | Write (gas) |
-| `getComputeMetrics` | Return cost vs revenue summary | No (KV read) |
-| `logDecision` | Save reasoning to 0G Storage | No (API call) |
+| Tool                | What It Does                      | On-Chain?     |
+| ------------------- | --------------------------------- | ------------- |
+| `getWalletBalance`  | Read USDC + ETH balance           | Read (free)   |
+| `getAavePosition`   | Read aUSDC balance + APY          | Read (free)   |
+| `supplyToAave`      | Approve + Deposit USDC to Aave V3 | Write (gas)   |
+| `withdrawFromAave`  | Withdraw USDC from Aave V3        | Write (gas)   |
+| `getComputeMetrics` | Return cost vs revenue summary    | No (KV read)  |
+| `logDecision`       | Save reasoning to 0G Storage      | No (API call) |
 
 ### Claude's System Prompt (Abridged)
 
@@ -172,6 +179,7 @@ aura/
 ```
 
 **Changes from original plan:**
+
 - `middleware.ts` at project root replaces `src/lib/x402/server.ts` (uses `@x402/next` library)
 - `scripts/test-x402-client.ts` promoted from stretch goal to required
 - `@aave/contract-helpers` removed — using viem directly with ABI fragments
@@ -195,7 +203,7 @@ export const builderCodeSuffix = Attribution.toDataSuffix({
 });
 
 export const account = privateKeyToAccount(
-  process.env.AGENT_PRIVATE_KEY as `0x${string}`
+  process.env.AGENT_PRIVATE_KEY as `0x${string}`,
 );
 
 export const walletClient = createWalletClient({
@@ -216,15 +224,19 @@ export const publicClient = createPublicClient({
 import { builderCodeSuffix } from "../wallet/viemClient";
 
 await walletClient.writeContract({
-  address: USDC, abi: erc20Abi, functionName: "approve",
+  address: USDC,
+  abi: erc20Abi,
+  functionName: "approve",
   args: [AAVE_POOL, maxUint256],
-  dataSuffix: builderCodeSuffix,  // <-- ERC-8021 applied here
+  dataSuffix: builderCodeSuffix, // <-- ERC-8021 applied here
 });
 
 await walletClient.writeContract({
-  address: AAVE_POOL, abi: AAVE_POOL_ABI, functionName: "supply",
+  address: AAVE_POOL,
+  abi: AAVE_POOL_ABI,
+  functionName: "supply",
   args: [USDC, amount, account.address, 0],
-  dataSuffix: builderCodeSuffix,  // <-- ERC-8021 applied here
+  dataSuffix: builderCodeSuffix, // <-- ERC-8021 applied here
 });
 ```
 
@@ -238,12 +250,12 @@ Uses **viem directly** with inline ABI fragments. Does NOT use `@aave/contract-h
 
 ### Contract Addresses (Base Mainnet)
 
-| Contract | Address |
-|----------|---------|
-| Aave V3 Pool | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
-| Aave Pool Data Provider | `0x2d8A3C5677189723C4cB8873CfC9C8976dfe292a` |
-| USDC (Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
-| aUSDC (Base) | `0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB` (verify via getReserveData at runtime) |
+| Contract                | Address                                                                             |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| Aave V3 Pool            | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5`                                        |
+| Aave Pool Data Provider | `0x2d8A3C5677189723C4cB8873CfC9C8976dfe292a`                                        |
+| USDC (Base)             | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`                                        |
+| aUSDC (Base)            | `0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB` (verify via getReserveData at runtime) |
 
 ### IMPORTANT: USDC Approval Required Before Supply
 
@@ -331,7 +343,9 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
   });
   if (allowance < amount) {
     const approveTx = await walletClient.writeContract({
-      address: USDC, abi: erc20Abi, functionName: "approve",
+      address: USDC,
+      abi: erc20Abi,
+      functionName: "approve",
       args: [AAVE_POOL, maxUint256],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
@@ -339,7 +353,9 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
 
   // Supply
   const supplyTx = await walletClient.writeContract({
-    address: AAVE_POOL, abi: AAVE_POOL_ABI, functionName: "supply",
+    address: AAVE_POOL,
+    abi: AAVE_POOL_ABI,
+    functionName: "supply",
     args: [USDC, amount, account.address, 0],
   });
   await publicClient.waitForTransactionReceipt({ hash: supplyTx });
@@ -350,7 +366,9 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
 export async function withdrawUsdc(amountUsdc: number): Promise<`0x${string}`> {
   const amount = parseUnits(amountUsdc.toString(), 6);
   const tx = await walletClient.writeContract({
-    address: AAVE_POOL, abi: AAVE_POOL_ABI, functionName: "withdraw",
+    address: AAVE_POOL,
+    abi: AAVE_POOL_ABI,
+    functionName: "withdraw",
     args: [USDC, amount, account.address],
   });
   await publicClient.waitForTransactionReceipt({ hash: tx });
@@ -361,7 +379,9 @@ export async function withdrawUsdc(amountUsdc: number): Promise<`0x${string}`> {
 // NOTE: "deposited" must be tracked in KV state since aTokens rebase continuously
 export async function getAaveBalance(): Promise<{ current: number }> {
   const balance = await publicClient.readContract({
-    address: A_USDC, abi: erc20Abi, functionName: "balanceOf",
+    address: A_USDC,
+    abi: erc20Abi,
+    functionName: "balanceOf",
     args: [account.address],
   });
   return { current: Number(formatUnits(balance, 6)) };
@@ -370,8 +390,10 @@ export async function getAaveBalance(): Promise<{ current: number }> {
 // Read current USDC supply APY from on-chain data
 export async function getAaveAPY(): Promise<number> {
   const reserveData = await publicClient.readContract({
-    address: AAVE_POOL, abi: AAVE_POOL_ABI,
-    functionName: "getReserveData", args: [USDC],
+    address: AAVE_POOL,
+    abi: AAVE_POOL_ABI,
+    functionName: "getReserveData",
+    args: [USDC],
   });
   const RAY = 1e27;
   const SECONDS_PER_YEAR = 31536000;
@@ -383,6 +405,7 @@ export async function getAaveAPY(): Promise<number> {
 ### Yield Tracking
 
 aUSDC balance on-chain = principal + accrued interest (it rebases). To track yield:
+
 - Store `totalDeposited` and `totalWithdrawn` in Vercel KV (`AgentState.aavePosition.depositedUsdc`)
 - Update on every supply/withdraw
 - `yieldEarned = currentATokenBalance - (totalDeposited - totalWithdrawn)`
@@ -405,10 +428,10 @@ interface AgentState {
 
   // Aave position
   aavePosition: {
-    depositedUsdc: number;         // cumulative deposits - withdrawals (tracked in KV)
-    currentATokenBalance: number;  // live on-chain aUSDC balance
+    depositedUsdc: number; // cumulative deposits - withdrawals (tracked in KV)
+    currentATokenBalance: number; // live on-chain aUSDC balance
     currentApyPct: number;
-    yieldEarnedTotalUsd: number;   // currentAToken - depositedUsdc
+    yieldEarnedTotalUsd: number; // currentAToken - depositedUsdc
   } | null;
 
   // Self-sustaining metrics
@@ -416,14 +439,14 @@ interface AgentState {
   computeCostTotalUsd: number;
   x402RevenueUsd: number;
   yieldRevenueTotalUsd: number;
-  totalRevenueUsd: number;        // x402 + yield
-  netPnlUsd: number;              // totalRevenue - computeCostTotal
-  isSelfSustaining: boolean;      // totalRevenue > computeCostTotal
-  runwayHours: number;            // surplus / hourlyComputeRate
+  totalRevenueUsd: number; // x402 + yield
+  netPnlUsd: number; // totalRevenue - computeCostTotal
+  isSelfSustaining: boolean; // totalRevenue > computeCostTotal
+  runwayHours: number; // surplus / hourlyComputeRate
 
   // Logs
   decisionLog: DecisionLogEntry[];
-  zgStorageRoots: string[];       // 0G Storage tx hashes for audit
+  zgStorageRoots: string[]; // 0G Storage tx hashes for audit
 }
 ```
 
@@ -432,47 +455,68 @@ interface AgentState {
 ## 7. Claude Tool Definitions (`src/lib/agent/tools.ts`)
 
 ```typescript
-import { tool } from "ai";  // v4.x: "tool" imported from "ai"
+import { tool } from "ai"; // v4.x: "tool" imported from "ai"
 import { z } from "zod";
 
 export const auraTools = {
   getWalletBalance: tool({
     description: "Get current USDC and ETH wallet balances",
-    parameters: z.object({}),  // v4.x: use "parameters" (NOT "inputSchema")
-    execute: async () => { /* reads from chain */ },
+    parameters: z.object({}), // v4.x: use "parameters" (NOT "inputSchema")
+    execute: async () => {
+      /* reads from chain */
+    },
   }),
   getAavePosition: tool({
-    description: "Get current Aave V3 USDC deposit, aToken balance, APY, and yield earned",
+    description:
+      "Get current Aave V3 USDC deposit, aToken balance, APY, and yield earned",
     parameters: z.object({}),
-    execute: async () => { /* reads from chain + KV */ },
+    execute: async () => {
+      /* reads from chain + KV */
+    },
   }),
   supplyToAave: tool({
-    description: "Supply USDC to Aave V3 lending pool to earn yield. Only call if liquid balance is above $35.",
+    description:
+      "Supply USDC to Aave V3 lending pool to earn yield. Only call if liquid balance is above $35.",
     parameters: z.object({
-      amountUsdc: z.number().describe("Amount of USDC to supply (max 80% of liquid balance)"),
+      amountUsdc: z
+        .number()
+        .describe("Amount of USDC to supply (max 80% of liquid balance)"),
     }),
-    execute: async ({ amountUsdc }) => { /* approves + writes to chain */ },
+    execute: async ({ amountUsdc }) => {
+      /* approves + writes to chain */
+    },
   }),
   withdrawFromAave: tool({
-    description: "Withdraw USDC from Aave V3. Only call if liquid balance is below $30.",
+    description:
+      "Withdraw USDC from Aave V3. Only call if liquid balance is below $30.",
     parameters: z.object({
       amountUsdc: z.number().describe("Amount of USDC to withdraw"),
     }),
-    execute: async ({ amountUsdc }) => { /* writes to chain */ },
+    execute: async ({ amountUsdc }) => {
+      /* writes to chain */
+    },
   }),
   getComputeMetrics: tool({
-    description: "Get current compute cost vs revenue summary to assess sustainability",
+    description:
+      "Get current compute cost vs revenue summary to assess sustainability",
     parameters: z.object({}),
-    execute: async () => { /* reads from KV */ },
+    execute: async () => {
+      /* reads from KV */
+    },
   }),
   logDecision: tool({
-    description: "Log the agent's decision and reasoning to 0G Storage for transparency",
+    description:
+      "Log the agent's decision and reasoning to 0G Storage for transparency",
     parameters: z.object({
-      action: z.string().describe("Action taken: hold | supply_to_aave | withdraw_from_aave"),
+      action: z
+        .string()
+        .describe("Action taken: hold | supply_to_aave | withdraw_from_aave"),
       reasoning: z.string().describe("1-2 sentence explanation"),
       status: z.enum(["SELF_SUSTAINING", "DEFICIT"]),
     }),
-    execute: async (entry) => { /* uploads to 0G, fallback to KV */ },
+    execute: async (entry) => {
+      /* uploads to 0G, fallback to KV */
+    },
   }),
 };
 ```
@@ -488,7 +532,7 @@ const result = await generateText({
   system: AURA_SYSTEM_PROMPT,
   prompt: `Current state: ${JSON.stringify(currentState)}. What action should you take?`,
   tools: auraTools,
-  maxSteps: parseInt(process.env.AGENT_MAX_STEPS || "5"),  // v4.x: maxSteps
+  maxSteps: parseInt(process.env.AGENT_MAX_STEPS || "5"), // v4.x: maxSteps
 });
 
 // Track token usage for cost accounting (v4.x property names)
@@ -510,11 +554,15 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 
 const facilitatorClient = new HTTPFacilitatorClient({
-  url: process.env.X402_FACILITATOR_URL || "https://api.cdp.coinbase.com/platform/v2/x402",
+  url:
+    process.env.X402_FACILITATOR_URL ||
+    "https://api.cdp.coinbase.com/platform/v2/x402",
 });
 
-const server = new x402ResourceServer(facilitatorClient)
-  .register("eip155:8453", new ExactEvmScheme()); // Base mainnet = chain ID 8453
+const server = new x402ResourceServer(facilitatorClient).register(
+  "eip155:8453",
+  new ExactEvmScheme(),
+); // Base mainnet = chain ID 8453
 
 export const middleware = paymentProxy(
   {
@@ -568,10 +616,10 @@ The x402 middleware handles payment validation + settlement via the CDP facilita
 
 ### Facilitator URLs
 
-| Environment | URL | Auth |
-|------------|-----|------|
-| Base Mainnet | `https://api.cdp.coinbase.com/platform/v2/x402` | CDP API keys required |
-| Base Sepolia (testing) | `https://www.x402.org/facilitator` | Free, no auth |
+| Environment            | URL                                             | Auth                  |
+| ---------------------- | ----------------------------------------------- | --------------------- |
+| Base Mainnet           | `https://api.cdp.coinbase.com/platform/v2/x402` | CDP API keys required |
+| Base Sepolia (testing) | `https://www.x402.org/facilitator`              | Free, no auth         |
 
 **For production (bounty submission), use the CDP facilitator with credentials from cdp.coinbase.com.**
 
@@ -582,7 +630,9 @@ import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
 
-const signer = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`);
+const signer = privateKeyToAccount(
+  process.env.AGENT_PRIVATE_KEY as `0x${string}`,
+);
 const client = new x402Client();
 registerExactEvmScheme(client, { signer });
 const fetchWithPayment = wrapFetchWithPayment(fetch, client);
@@ -628,9 +678,9 @@ interface DecisionLogEntry {
   balances: { liquidUsdc: number; aaveDeposit: number };
   computeCostUsd: number;
   revenueUsd: number;
-  txHash?: string;          // if an on-chain action was taken
-  zgStorageRoot?: string;   // 0G merkle root of this entry
-  storedOn: "0g" | "kv";   // where this entry is stored
+  txHash?: string; // if an on-chain action was taken
+  zgStorageRoot?: string; // 0G merkle root of this entry
+  storedOn: "0g" | "kv"; // where this entry is stored
 }
 ```
 
@@ -669,13 +719,13 @@ interface DecisionLogEntry {
 
 ## 11. Key Contract Addresses (Base Mainnet)
 
-| Contract | Address |
-|----------|---------|
-| Aave V3 Pool | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
-| Aave Pool Data Provider | `0x2d8A3C5677189723C4cB8873CfC9C8976dfe292a` |
-| USDC (Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
-| aUSDC (Base) | `0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB` |
-| WETH (Base) | `0x4200000000000000000000000000000000000006` |
+| Contract                 | Address                                      |
+| ------------------------ | -------------------------------------------- |
+| Aave V3 Pool             | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
+| Aave Pool Data Provider  | `0x2d8A3C5677189723C4cB8873CfC9C8976dfe292a` |
+| USDC (Base)              | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| aUSDC (Base)             | `0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB` |
+| WETH (Base)              | `0x4200000000000000000000000000000000000006` |
 | Chainlink ETH/USD (Base) | `0x71041dddad3595F9CEd3dCCFBe3D1F4b0a16Bb70` |
 
 ---
@@ -684,6 +734,7 @@ interface DecisionLogEntry {
 
 - **NEVER commit `.env.local`** — it contains the agent's private key
 - Agent private key stored only in Railway + Vercel dashboard env vars
+- **NEVER print a private key or api key out to the terminal or chat interface without explicit permission from the human/user**
 - Dashboard is fully read-only — no write operations from the frontend
 - Agent enforces hard minimum balance: never drops below $25 USDC total
 - Maximum single Aave deposit: 80% of liquid balance (preserves gas reserves)

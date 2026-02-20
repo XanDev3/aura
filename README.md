@@ -9,9 +9,9 @@ AURA is a self-sustaining autonomous AI agent that earns more than it spends on 
 | Resource | Link |
 |----------|------|
 | 📊 Dashboard | **[FILL IN VERCEL URL]** |
-| 🔗 Agent Wallet | **[FILL IN BASESCAN LINK]** |
+| 🔗 Agent Wallet | **[basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0](https://basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0)** |
 | 🎥 Demo Video | **[FILL IN VIDEO LINK]** |
-| 📁 GitHub | **[FILL IN REPO LINK]** |
+| 📁 GitHub | **[github.com/XanDev3/aura](https://github.com/XanDev3/aura)** |
 
 ---
 
@@ -57,7 +57,7 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 - Payments: x402 protocol (sell DeFi analysis)
 - Storage: 0G Storage for decentralized decision logs
 - State: Vercel KV (Redis)
-- Dashboard: Next.js 15 + Tailwind on Vercel
+- Dashboard: Next.js 16 + Tailwind on Vercel
 
 ---
 
@@ -73,7 +73,7 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/YOUR_HANDLE/aura-agent
+git clone https://github.com/XanDev3/aura
 cd aura-agent
 npm install
 
@@ -120,6 +120,27 @@ AURA is designed to be safe by construction:
 - **No leverage** — only simple lending, no borrowing
 - **Transparent** — all decisions logged to 0G Storage
 - **Observable** — public dashboard, no passwords
+- **Pausable** — manual kill-switch via Vercel KV, no Railway restart needed
+
+---
+
+## Pausing the Agent
+
+The agent can be paused without touching Railway. It will keep running but skip every tick until unpaused.
+
+**To pause:**
+1. Go to [vercel.com](https://vercel.com) → your project → **Storage** → select your KV store
+2. Click **Open in Upstash** — this opens the Upstash console for your KV store
+3. In the Upstash console, click the **CLI** tab
+4. Run: `SET aura:paused true`
+5. Within 5 minutes the Railway logs will show: `Agent is paused — skipping tick`
+
+**To resume:**
+1. Return to the same Upstash CLI tab
+2. Run: `DEL aura:paused`
+3. The next interval the agent ticks normally
+
+> Cost saved while paused: ~$0.86/day (288 Haiku ticks). Aave yield continues accruing onchain regardless.
 
 ---
 
