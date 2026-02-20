@@ -89,7 +89,14 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
   }
 
+  // Fetch nonce explicitly after any approve to avoid stale RPC cache on Base L2
+  const nonce = await publicClient.getTransactionCount({
+    address: account.address,
+    blockTag: "latest",
+  });
+
   const supplyTx = await walletClient.writeContract({
+    nonce,
     address: AAVE_POOL,
     abi: AAVE_POOL_ABI,
     functionName: "supply",
