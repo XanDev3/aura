@@ -10,6 +10,12 @@ export const builderCodeSuffix = Attribution.toDataSuffix({
   codes: [process.env.ERC8021_BUILDER_CODE!],
 });
 
+// Check for agent private key in environment variables — this is required to sign transactions.
+if (!process.env.AGENT_PRIVATE_KEY) {
+  throw new Error(
+    "AGENT_PRIVATE_KEY is not set. Check Railway environment variables.",
+  );
+}
 export const account = privateKeyToAccount(
   process.env.AGENT_PRIVATE_KEY as `0x${string}`
 );
