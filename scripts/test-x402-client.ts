@@ -13,7 +13,8 @@
  *   - CDP credentials must be set for mainnet facilitator
  */
 
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
