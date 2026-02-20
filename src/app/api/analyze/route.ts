@@ -1,17 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { trackX402Revenue } from "@/lib/tracking/revenue";
 import { recordComputeCost } from "@/lib/tracking/compute";
 import { readState, writeState, computeDerivedFields } from "@/lib/agent/state";
+import { withX402, x402ResourceServer } from "@x402/next";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+// x402 server initialized here (Node.js runtime) instead of middleware.ts (Edge Runtime).
+// Edge Runtime lacks the Node.js crypto APIs required by @x402/evm.
+const facilitatorClient = new HTTPFacilitatorClient({
+  url:
+    process.env.X402_FACILITATOR_URL ||
+    "https://api.cdp.coinbase.com/platform/v2/x402",
+});
+
+const x402Server = new x402ResourceServer(facilitatorClient).register(
+  "eip155:8453",
+  new ExactEvmScheme()
+);
 
 /**
  * POST /api/analyze
  * x402-gated DeFi analysis endpoint.
- * Payment is validated by middleware.ts BEFORE this handler executes.
+ * Payment is validated by withX402 wrapper (runs in Node.js runtime, not Edge).
  * Uses Claude Sonnet for quality analysis (this is a paid endpoint).
  */
-export async function POST(req: Request) {
+async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
   try {
     const body = await req.json();
     const query: string = body?.query ?? "";
@@ -33,7 +49,7 @@ export async function POST(req: Request) {
       maxSteps: 1,
     });
 
-    // Track x402 revenue — $0.01 per request (matches middleware price)
+    // Track x402 revenue — $0.01 per request (matches route price)
     const newX402Total = await trackX402Revenue(0.01);
 
     // Record compute cost for this Sonnet call
@@ -65,3 +81,20 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const POST = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.01",
+        network: "eip155:8453",
+        payTo: process.env.AGENT_WALLET_ADDRESS!,
+      },
+    ],
+    description: "AURA DeFi Analysis — 0.01 USDC per query",
+    mimeType: "application/json",
+  },
+  x402Server
+);
