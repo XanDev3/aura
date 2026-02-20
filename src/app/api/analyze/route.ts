@@ -7,6 +7,22 @@ import { readState, writeState, computeDerivedFields } from "@/lib/agent/state";
 import { withX402, x402ResourceServer } from "@x402/next";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { getAuthHeaders } from "@coinbase/cdp-sdk/auth";
+
+// Build CDP JWT auth headers for each x402 facilitator endpoint.
+// HTTPFacilitatorClient does NOT auto-detect CDP credentials — must be explicit.
+async function buildCdpAuthHeaders() {
+  const apiKeyId = process.env.CDP_API_KEY_ID!;
+  const apiKeySecret = process.env.CDP_API_KEY_SECRET!;
+  const host = "api.cdp.coinbase.com";
+  const base = "/platform/v2/x402";
+  const [verify, settle, supported] = await Promise.all([
+    getAuthHeaders({ apiKeyId, apiKeySecret, requestMethod: "POST", requestHost: host, requestPath: `${base}/verify` }),
+    getAuthHeaders({ apiKeyId, apiKeySecret, requestMethod: "POST", requestHost: host, requestPath: `${base}/settle` }),
+    getAuthHeaders({ apiKeyId, apiKeySecret, requestMethod: "GET",  requestHost: host, requestPath: `${base}/supported` }),
+  ]);
+  return { verify, settle, supported };
+}
 
 // x402 server initialized here (Node.js runtime) instead of middleware.ts (Edge Runtime).
 // Edge Runtime lacks the Node.js crypto APIs required by @x402/evm.
@@ -14,6 +30,7 @@ const facilitatorClient = new HTTPFacilitatorClient({
   url:
     process.env.X402_FACILITATOR_URL ||
     "https://api.cdp.coinbase.com/platform/v2/x402",
+  createAuthHeaders: buildCdpAuthHeaders,
 });
 
 const x402Server = new x402ResourceServer(facilitatorClient).register(
