@@ -7,9 +7,10 @@
  */
 import { runAgentTick } from "./agentRunner";
 
-const TICK_INTERVAL_MS = parseInt(
-  process.env.AGENT_TICK_INTERVAL_MS || String(5 * 60 * 1000) // 5 minutes
-);
+// Accept AGENT_INTERVAL_MINUTES (from .env.example) or AGENT_TICK_INTERVAL_MS (in ms)
+const TICK_INTERVAL_MS = process.env.AGENT_TICK_INTERVAL_MS
+  ? parseInt(process.env.AGENT_TICK_INTERVAL_MS)
+  : parseInt(process.env.AGENT_INTERVAL_MINUTES || "5") * 60 * 1000;
 
 async function loop() {
   console.log(`[AURA Loop] Starting. Tick interval: ${TICK_INTERVAL_MS / 1000}s`);

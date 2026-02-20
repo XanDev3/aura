@@ -1,5 +1,5 @@
 import { parseUnits, formatUnits, erc20Abi, maxUint256 } from "viem";
-import { publicClient, walletClient, account } from "../wallet/viemClient";
+import { publicClient, walletClient, account, builderCodeSuffix } from "../wallet/viemClient";
 
 // Base mainnet addresses — verified Feb 2026
 export const AAVE_POOL = "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5" as const;
@@ -84,6 +84,7 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
       abi: erc20Abi,
       functionName: "approve",
       args: [AAVE_POOL, maxUint256],
+      dataSuffix: builderCodeSuffix,
     });
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
   }
@@ -93,6 +94,7 @@ export async function supplyUsdc(amountUsdc: number): Promise<`0x${string}`> {
     abi: AAVE_POOL_ABI,
     functionName: "supply",
     args: [USDC, amount, account.address, 0],
+    dataSuffix: builderCodeSuffix,
   });
   await publicClient.waitForTransactionReceipt({ hash: supplyTx });
   return supplyTx;
@@ -108,6 +110,7 @@ export async function withdrawUsdc(amountUsdc: number): Promise<`0x${string}`> {
     abi: AAVE_POOL_ABI,
     functionName: "withdraw",
     args: [USDC, amount, account.address],
+    dataSuffix: builderCodeSuffix,
   });
   await publicClient.waitForTransactionReceipt({ hash: tx });
   return tx;

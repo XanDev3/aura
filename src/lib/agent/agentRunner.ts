@@ -5,7 +5,6 @@ import { readState, writeState, computeDerivedFields } from "./state";
 import { recordComputeCost } from "../tracking/compute";
 import { getUsdcBalance, getEthBalance, getAaveBalance, getAaveAPY } from "../defi/aave";
 import { getDepositedUsdc, getRevenueSummary, updateYieldSnapshot } from "../tracking/revenue";
-import { getComputeCosts } from "../tracking/compute";
 
 const AURA_SYSTEM_PROMPT = `You are AURA — an Autonomous Utility Revenue Agent running on Base mainnet.
 
@@ -65,12 +64,12 @@ export async function runAgentTick(): Promise<TickResult> {
 
     // Record compute cost using v4.x token usage property names
     const { costUsd, todayUsd, totalUsd } = await recordComputeCost({
-      promptTokens: result.totalUsage.promptTokens,
-      completionTokens: result.totalUsage.completionTokens,
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
       model: "haiku",
     });
 
-    console.log(`[AURA] Tick #${tick} done. Tokens: ${result.totalUsage.promptTokens}in/${result.totalUsage.completionTokens}out. Cost: $${costUsd.toFixed(5)}`);
+    console.log(`[AURA] Tick #${tick} done. Tokens: ${result.usage.promptTokens}in/${result.usage.completionTokens}out. Cost: $${costUsd.toFixed(5)}`);
 
     // Rebuild full state snapshot from live data
     const [

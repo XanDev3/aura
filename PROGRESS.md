@@ -5,7 +5,7 @@
 > **Deadline:** Saturday Feb 21, 2026 at 8:00 AM MST
 > **Build window:** Thu Feb 19 ~11AM -> Sat Feb 21 8:00 AM ~ 45 hours
 > **Builder:** Solo
-> **Last updated:** Feb 19, 2026 ~5PM MST
+> **Last updated:** Feb 20, 2026
 
 ---
 
@@ -40,8 +40,8 @@
 | B3 | Agent wallet private key | `[x]` | Create a fresh wallet (MetaMask, cast, or CDP portal) |
 | B4 | Base mainnet funded: ~0.01 ETH + **$150-200 USDC** | `[ ]` | Bridge or buy directly on Base |
 | B5 | Vercel account + KV store created | `[ ]` | Vercel Dashboard -> Storage -> KV -> Create -> copy env vars |
-| B6 | Railway account for agent daemon | `[ ]` | railway.app -> New Project -> link GitHub repo |
-| B7 | 0G account + testnet tokens | `[ ]` | **build.0g.ai** -> get account + faucet tokens at faucet.0g.ai |
+| B6 | Railway account for agent daemon | `[x]` | railway.app -> New Project -> link GitHub repo |
+| B7 | 0G account + testnet tokens | `[x]` | **build.0g.ai** -> get account + faucet tokens at faucet.0g.ai |
 | B8 | GitHub repo created and pushed | `[x]` | `gh repo create aura-agent --public` then push `/aura` |
 | B9 | **CDP account + API keys (for x402 mainnet)** | `[x]` | **cdp.coinbase.com** -> create account -> get API key ID + secret (free tier: 1000 tx/mo) |
 
@@ -52,7 +52,7 @@
 ### Config & Root Files
 | File | Status | Notes |
 |------|--------|-------|
-| `package.json` | `[x]` | Updated: added `@x402/*` packages, removed `@aave/contract-helpers`, bumped 0G SDK to 0.3.1, moved `tsx` to deps |
+| `package.json` | `[x]` | Updated: added `@x402/*` packages, removed `@aave/contract-helpers`, bumped 0G SDK to 0.3.1, moved `tsx` to deps, **upgraded Next.js to v16**, **pinned ethers to 6.13.1** (Railway CVE fix), **bumped ox to ^0.13.0** (first version with `ox/erc8021`) |
 | `tsconfig.json` | `[x]` | Next.js + strict mode |
 | `next.config.ts` | `[x]` | serverExternalPackages for 0G + ethers |
 | `tailwind.config.ts` | `[x]` | AURA dark theme (space blue) |
@@ -305,6 +305,7 @@
 | Feb 19 | Railway for agent daemon, Vercel for dashboard | Vercel serverless can't run persistent cron loop |
 | Feb 19 | Vercel KV as primary state, 0G Storage as decentralized log | Fast reads from KV; 0G provides immutable audit trail |
 | Feb 19 | `ethers` added for 0G SDK compatibility only | 0G TS SDK requires ethers signer; isolated to `zero-g.ts` |
+| Feb 20 | **Next.js upgraded to v16** (`^16.0.10`), **ethers pinned to `6.13.1`** | Railway deployment blocked by CVE in older versions; pinning ethers avoids semver pulling in a vulnerable version |
 | Feb 19 | **Haiku for ticks, Sonnet for x402 analysis** | Haiku is ~$0.002/tick ($0.50/day). Sonnet for paid analysis quality. |
 | Feb 19 | **$150-200 USDC seed capital** | $75 yield too low; $150-200 + x402 revenue makes sustainability credible |
 | Feb 19 | **viem-only for Aave** (removed `@aave/contract-helpers`) | `@aave/contract-helpers` requires ethers; raw viem is simpler |
@@ -341,6 +342,29 @@
 
 ---
 
+## Sanity Check Notes (Feb 20)
+
+**Package changes from last session:**
+- `next` upgraded from `^15.x` to `^16.0.10` — required for Railway deployment (CVE block)
+- `ethers` pinned to exact `6.13.1` (no caret) — prevents npm from pulling in a CVE-affected patch version
+- All other package versions unchanged; `npm install` clean after these changes
+
+**Bugs found and fixed (code review Feb 20) — `npm run type-check` now passes clean:**
+
+- **[CRITICAL — fixed]** `viemClient.ts` had `dataSuffix` on `createWalletClient`, which viem does NOT support — TypeScript errored on it (hence `@ts-expect-error`). ERC-8021 builder code was silently NOT being applied to any transaction. Fix: renamed to `builderCodeSuffix`, exported it, and added `dataSuffix: builderCodeSuffix` to every `writeContract` call in `aave.ts` (approve, supply, withdraw). **This was a bounty-killer bug — verify ERC-8021 on builder-code-checker.vercel.app after first tx.**
+- **[fixed]** `ox` bumped from `^0.6.7` to `^0.13.0` — v0.6.x does not have the `ox/erc8021` subpath. v0.13.0 is the first release with `Attribution.toDataSuffix`.
+- **[fixed]** `agentRunner.ts` used `result.totalUsage` — the installed `ai` SDK uses `result.usage` (no `totalUsage` property). Fixed all 3 references.
+- **[fixed]** Duplicate `import { getComputeCosts }` removed from `agentRunner.ts` — it's used in `tools.ts`, not here.
+- **[fixed]** `zero-g.ts` `Indexer.upload()` had wrong argument order and wrong file type. Correct call: `indexer.upload(new MemData(bytes), ZG_RPC_URL, signer)`. Return is `[{ txHash, rootHash }, error]` — use `result.rootHash`.
+- **[fixed]** `test-x402-client.ts` included `signMessage` in the x402 signer object — `ClientEvmSigner` only requires `address` + `signTypedData`. Removed.
+- **[minor — fixed]** `loop.ts` read `AGENT_TICK_INTERVAL_MS` but `.env.example` documented `AGENT_INTERVAL_MINUTES`. Updated `loop.ts` to accept both (prefers ms form, falls back to minutes).
+- **[minor — fixed]** `VERCEL_URL` env var (required by `test-x402-client.ts`) was missing from `.env.example`. Added.
+- **[minor — fixed]** ARCHITECTURE.md section 4 updated to show the correct per-transaction `dataSuffix` pattern and renamed export.
+
+**State after this session:** All source files written and type-check clean. Remaining work is Phase 0 (credentials), Phase 6 (deploy to Railway + Vercel), Phase 7 (integration test), Phase 8 (submit).
+
+---
+
 ## Time Budget
 
 | Phase | Est. Hours | Status |
@@ -364,7 +388,7 @@
 | Resource | URL |
 |----------|-----|
 | Live dashboard | -- |
-| GitHub repo | -- |
+| GitHub repo | https://github.com/XanDev3/aura  |
 | Railway agent logs | -- |
 | Agent wallet on Basescan | -- |
 | Builder code checker | https://builder-code-checker.vercel.app |
@@ -384,7 +408,7 @@ Start a new Claude Code session and say exactly this:
 > Then write all remaining files marked `[ ]` in PROGRESS.md, starting with the core lib files."
 
 ### What a new agent needs to know (summary)
-- **Stack:** Next.js 15, Vercel AI SDK v4.x + Claude Haiku (ticks) / Sonnet (analysis), viem, Aave V3, x402, 0G Storage, Vercel KV
+- **Stack:** Next.js 16, Vercel AI SDK v4.x + Claude Haiku (ticks) / Sonnet (analysis), viem, Aave V3, x402, 0G Storage, Vercel KV
 - **Agent pattern:** `generateText` with Zod tools using `parameters` (NOT `inputSchema`) and `maxSteps` (NOT `stopWhen`) -- this is v4.x
 - **Token tracking:** `result.totalUsage.promptTokens` and `result.totalUsage.completionTokens` (v4.x names)
 - **ERC-8021:** Applied via `ox/erc8021` `Attribution.toDataSuffix` in `viemClient.ts` -- auto-tags ALL txs

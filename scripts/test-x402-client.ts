@@ -45,16 +45,13 @@ async function main() {
   console.log(`[x402 Test] Target: ${vercelUrl}/api/analyze`);
 
   // Set up x402 client with EVM payment scheme
+  // ClientEvmSigner only requires: address + signTypedData (EIP-712 for EIP-3009 auth)
   const client = new x402Client();
   registerExactEvmScheme(client, {
     signer: {
       address: account.address,
-      signMessage: async ({ message }: { message: string | Uint8Array }) => {
-        const msgStr = typeof message === "string" ? message : Buffer.from(message).toString("hex");
-        return walletClient.signMessage({ message: msgStr });
-      },
-      // EIP-3009 authorization signing for gasless USDC transfer
-      signTypedData: async (typedData: Parameters<typeof walletClient.signTypedData>[0]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      signTypedData: async (typedData: any) => {
         return walletClient.signTypedData(typedData);
       },
     },

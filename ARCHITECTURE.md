@@ -1,7 +1,7 @@
 # AURA — Technical Architecture
 
 > **AURA** = Autonomous Utility Revenue Agent
-> Chain: Base Mainnet | AI: Claude (Anthropic) via Vercel AI SDK | Framework: AgentKit pattern
+> Chain: Base Mainnet | AI: Claude (Anthropic) via Vercel AI SDK | Framework: Next.js 16 + AgentKit pattern
 
 ---
 
@@ -180,16 +180,17 @@ aura/
 
 ## 4. ERC-8021 Builder Code Integration (`src/lib/wallet/viemClient.ts`)
 
-Every transaction sent by AURA automatically includes the ERC-8021 attribution suffix. This is a one-time setup in `viemClient.ts` — no per-transaction changes needed.
+**IMPORTANT:** viem does NOT support `dataSuffix` on `createWalletClient`. It must be passed to every individual `writeContract` call. `builderCodeSuffix` is exported from `viemClient.ts` and imported in `aave.ts` for every write.
 
 ```typescript
+// viemClient.ts
 import { createWalletClient, createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import { Attribution } from "ox/erc8021";
 import { privateKeyToAccount } from "viem/accounts";
 
-// Get builder code from base.dev -> Settings -> Builder Codes
-const DATA_SUFFIX = Attribution.toDataSuffix({
+// Export so aave.ts can pass it to every writeContract call
+export const builderCodeSuffix = Attribution.toDataSuffix({
   codes: [process.env.ERC8021_BUILDER_CODE!],
 });
 
@@ -200,13 +201,30 @@ export const account = privateKeyToAccount(
 export const walletClient = createWalletClient({
   account,
   chain: base,
-  transport: http(process.env.BASE_RPC_URL),
-  dataSuffix: DATA_SUFFIX,   // <-- auto-appended to ALL transactions
+  transport: http(process.env.BASE_RPC_URL || "https://mainnet.base.org"),
+  // NOTE: dataSuffix does NOT go here — viem doesn't support it at client level
 });
 
 export const publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.BASE_RPC_URL),
+  transport: http(process.env.BASE_RPC_URL || "https://mainnet.base.org"),
+});
+```
+
+```typescript
+// aave.ts — pass builderCodeSuffix to every writeContract call
+import { builderCodeSuffix } from "../wallet/viemClient";
+
+await walletClient.writeContract({
+  address: USDC, abi: erc20Abi, functionName: "approve",
+  args: [AAVE_POOL, maxUint256],
+  dataSuffix: builderCodeSuffix,  // <-- ERC-8021 applied here
+});
+
+await walletClient.writeContract({
+  address: AAVE_POOL, abi: AAVE_POOL_ABI, functionName: "supply",
+  args: [USDC, amount, account.address, 0],
+  dataSuffix: builderCodeSuffix,  // <-- ERC-8021 applied here
 });
 ```
 
@@ -583,7 +601,7 @@ Run with: `npm run test:x402`
 
 ## 9. 0G Storage Integration (`src/lib/storage/zero-g.ts`)
 
-Uses `@0glabs/0g-ts-sdk` v0.3.1 + ethers v6. Uploads decision logs as JSON to 0G Storage testnet.
+Uses `@0glabs/0g-ts-sdk` v0.3.1 + **ethers 6.13.1** (pinned — no caret). Uploads decision logs as JSON to 0G Storage testnet.
 
 ### Upload Pattern (Batcher for KV data)
 

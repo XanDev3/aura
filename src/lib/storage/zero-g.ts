@@ -40,9 +40,9 @@ export async function uploadDecisionLog(
 async function uploadTo0G(
   entry: DecisionLogEntry
 ): Promise<{ storedOn: "0g"; root: string }> {
-  // Dynamic import — ethers is only needed here
+  // Dynamic import — ethers + 0G SDK only needed here
   const { ethers } = await import("ethers");
-  const { Indexer } = await import("@0glabs/0g-ts-sdk");
+  const { Indexer, MemData } = await import("@0glabs/0g-ts-sdk");
 
   const provider = new ethers.JsonRpcProvider(process.env.ZG_RPC_URL);
   const signer = new ethers.Wallet(process.env.ZG_PRIVATE_KEY!, provider);
@@ -51,17 +51,19 @@ async function uploadTo0G(
   const content = JSON.stringify(entry, null, 2);
   const bytes = new TextEncoder().encode(content);
 
-  // Upload as a blob via the indexer
-  const [tx, err] = await indexer.upload(
-    { content: bytes, size: bytes.length },
-    0,   // segment index
+  // MemData wraps raw bytes in the interface the SDK expects
+  // Indexer.upload(file, blockchain_rpc, signer, uploadOpts?)
+  // Returns: [{ txHash, rootHash }, error]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [result, err] = await indexer.upload(
+    new MemData(bytes),
     process.env.ZG_RPC_URL!,
-    signer
+    signer as any  // ESM vs CJS ethers type mismatch — identical at runtime
   );
 
   if (err !== null) throw new Error(`0G upload error: ${err}`);
 
-  return { storedOn: "0g", root: tx };
+  return { storedOn: "0g", root: result.rootHash };
 }
 
 async function storeInKV(
