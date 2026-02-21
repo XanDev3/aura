@@ -11,7 +11,9 @@
       "Bash(npx skills remove coinbase/agentic-wallet-skills --yes)",
       "Bash(npx skills:*)",
       "WebFetch(domain:ethskills.com)",
-      "WebFetch(domain:docs.x402.org)"
+      "WebFetch(domain:docs.x402.org)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
     ]
   }
 }

@@ -66,7 +66,7 @@
 |------|--------|-------|
 | `PROGRESS.md` | `[x]` | This file -- update constantly |
 | `ARCHITECTURE.md` | `[x]` | **Rewritten** with verified code patterns: viem-only Aave, @x402/next middleware, AI SDK v4.x specifics, realistic cost model |
-| `README.md` | `[x]` | Public-facing -- fill live URLs before submission |
+| `README.md` | `[~]` | Public-facing -- **fill live URLs before submission** |
 
 ### Core Library -- Wallet
 | File | Status | Notes |
@@ -140,21 +140,21 @@
 
 ## Build Phases
 
-### PHASE 0 -- Pre-Flight (~2h) `[ ]`
+### PHASE 0 -- Pre-Flight (~2h) `[x]`
 > Resolve all blockers. Nothing else starts until B1-B9 are done.
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Register ERC-8021 builder code on **base.dev** | 5 min |
-| `[ ]` | Get Claude API key | 5 min |
-| `[ ]` | Create and fund agent wallet (ETH + **$100 USDC** on Base mainnet) | 15 min |
-| `[ ]` | Create GitHub repo, push `aura/` directory | 10 min |
-| `[ ]` | Create Vercel project + KV store, copy env vars | 15 min |
-| `[ ]` | Create Railway project, link to GitHub | 10 min |
-| `[ ]` | Create 0G account, get testnet tokens from faucet.0g.ai | 15 min |
-| `[ ]` | **Create CDP account at cdp.coinbase.com, get API keys** | 10 min |
-| `[ ]` | Fill `.env.local` with all values | 10 min |
-| `[ ]` | Run `npm install` -- verify zero errors | 5 min |
+| `[x]` | Register ERC-8021 builder code on **base.dev** | 5 min |
+| `[x]` | Get Claude API key | 5 min |
+| `[x]` | Create and fund agent wallet (ETH + **$100 USDC** on Base mainnet) | 15 min |
+| `[x]` | Create GitHub repo, push `aura/` directory | 10 min |
+| `[x]` | Create Vercel project + KV store, copy env vars | 15 min |
+| `[x]` | Create Railway project, link to GitHub | 10 min |
+| `[x]` | Create 0G account, get testnet tokens from faucet.0g.ai | 15 min |
+| `[x]` | **Create CDP account at cdp.coinbase.com, get API keys** | 10 min |
+| `[x]` | Fill `.env.local` with all values | 10 min |
+| `[x]` | Run `npm install` -- verify zero errors | 5 min |
 
 **Exit criteria:** `.env.local` fully populated. `npm install` succeeds.
 
@@ -172,12 +172,12 @@
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Write `src/lib/wallet/viemClient.ts` | 20 min |
-| `[ ]` | Write `src/lib/defi/aave.ts` (viem-only, with USDC approve logic) | 45 min |
-| `[ ]` | Send test tx on Base mainnet -- verify ERC-8021 code on Basescan | 15 min |
-| `[ ]` | Test `supplyUsdc(10)` with real USDC on Base mainnet | 20 min |
-| `[ ]` | Verify aUSDC balance appears in wallet | 10 min |
-| `[ ]` | Test `withdrawUsdc(5)` | 10 min |
+| `[x]` | Write `src/lib/wallet/viemClient.ts` | 20 min |
+| `[x]` | Write `src/lib/defi/aave.ts` (viem-only, with USDC approve logic) | 45 min |
+| `[x]` | Send test tx on Base mainnet -- verify ERC-8021 code on Basescan | 15 min |
+| `[x]` | Test `supplyUsdc(10)` with real USDC on Base mainnet | 20 min |
+| `[x]` | Verify aUSDC balance appears in wallet | 10 min |
+| `[x]` | Test `withdrawUsdc(5)` | 10 min |
 
 **Exit criteria:** Real USDC earning yield in Aave V3 on Base mainnet. ERC-8021 confirmed on-chain.
 
@@ -187,14 +187,14 @@
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Write `src/lib/agent/state.ts` | 20 min |
-| `[ ]` | Write `src/lib/tracking/compute.ts` (Haiku pricing: $1/M in, $5/M out) | 15 min |
-| `[ ]` | Write `src/lib/tracking/revenue.ts` | 15 min |
-| `[ ]` | Write `src/lib/storage/zero-g.ts` (with KV fallback) | 30 min |
-| `[ ]` | Write `src/lib/agent/tools.ts` (v4.x: `parameters`, not `inputSchema`) | 30 min |
-| `[ ]` | Write `src/lib/agent/agentRunner.ts` (v4.x: `maxSteps`, `totalUsage.promptTokens`) | 45 min |
-| `[ ]` | Write `src/lib/agent/loop.ts` | 20 min |
-| `[ ]` | Run one local agent tick -- verify state writes to KV | 20 min |
+| `[x]` | Write `src/lib/agent/state.ts` | 20 min |
+| `[x]` | Write `src/lib/tracking/compute.ts` (Haiku pricing: $1/M in, $5/M out) | 15 min |
+| `[x]` | Write `src/lib/tracking/revenue.ts` | 15 min |
+| `[x]` | Write `src/lib/storage/zero-g.ts` (with KV fallback) | 30 min |
+| `[x]` | Write `src/lib/agent/tools.ts` (v4.x: `parameters`, not `inputSchema`) | 30 min |
+| `[x]` | Write `src/lib/agent/agentRunner.ts` (v4.x: `maxSteps`, `totalUsage.promptTokens`) | 45 min |
+| `[x]` | Write `src/lib/agent/loop.ts` | 20 min |
+| `[x]` | Run one local agent tick -- verify state writes to KV | 20 min |
 
 **Exit criteria:** `npm run agent:dev` runs one tick successfully. State visible in Vercel KV.
 
@@ -204,8 +204,7 @@
 
 > **CONFIRMED WORKING** (Feb 2026). All 3 test queries paid 0.01 USDC each via EIP-3009 on Base mainnet.
 > See **[TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md)** for full debug history (6 failures resolved).
-> Key requirement: `
-BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET_ADDRESS`.
+> Key requirement: `BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET_ADDRESS`.
 
 | Status | Task | Est. |
 |--------|------|-------|
@@ -223,40 +222,40 @@ BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Write `src/app/api/stats/route.ts` | 15 min |
-| `[ ]` | Write `src/app/layout.tsx` + `src/app/globals.css` | 15 min |
-| `[ ]` | Write `src/app/page.tsx` | 20 min |
-| `[ ]` | Write all 6 components | 90 min |
-| `[ ]` | Deploy to Vercel -> confirm public URL loads | 15 min |
-| `[ ]` | Verify auto-poll every 30s with live data | 10 min |
+| `[x]` | Write `src/app/api/stats/route.ts` | 15 min |
+| `[x]` | Write `src/app/layout.tsx` + `src/app/globals.css` | 15 min |
+| `[x]` | Write `src/app/page.tsx` | 20 min |
+| `[x]` | Write all 6 components | 90 min |
+| `[x]` | Deploy to Vercel -> confirm public URL loads | 15 min |
+| `[x]` | Verify auto-poll every 30s with live data | 10 min |
 
 **Exit criteria:** Public Vercel URL live. All panels show real on-chain data.
 
 ---
 
-### PHASE 6 -- Deploy Agent Daemon (~1h) `[ ]`
+### PHASE 6 -- Deploy Agent Daemon (~1h) `[x]`
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Push code to GitHub | 5 min |
-| `[ ]` | Set all env vars in Railway dashboard | 15 min |
-| `[ ]` | Deploy -- watch Railway logs for first successful tick | 20 min |
-| `[ ]` | Confirm dashboard updates after Railway tick | 10 min |
+| `[x]` | Push code to GitHub | 5 min |
+| `[x]` | Set all env vars in Railway dashboard | 15 min |
+| `[x]` | Deploy -- watch Railway logs for first successful tick | 20 min |
+| `[x]` | Confirm dashboard updates after Railway tick | 10 min |
 
 **Exit criteria:** Agent running on Railway, ticking autonomously every 5 min, dashboard updating.
 
 ---
 
-### PHASE 7 -- Integration Testing (~2h) `[ ]`
+### PHASE 7 -- Integration Testing (~2h) `[~]`
 
 | Status | Task | Est. |
 |--------|------|------|
-| `[ ]` | Let agent run unattended for 2+ hours | 2h |
-| `[ ]` | Run `npm run test:x402` multiple times to generate x402 revenue | 10 min |
+| `[x]` | Let agent run unattended for 2+ hours | 2h |
+| `[x]` | Run `npm run test:x402` multiple times to generate x402 revenue | 10 min |
 | `[ ]` | Spot-check 3 txs on builder-code-checker.vercel.app | 10 min |
-| `[ ]` | Verify `isSelfSustaining` flag logic is correct | 10 min |
+| `[ ]` | Verify `isSelfSustaining` flag logic is correct in live dashboard | 10 min |
 | `[ ]` | Verify 0G Storage logs readable in dashboard | 10 min |
-| `[ ]` | Verify Railway auto-restarts cleanly | 5 min |
+| `[x]` | Verify Railway auto-restarts cleanly | 5 min |
 
 **Exit criteria:** 2+ hours autonomous operation confirmed. x402 revenue visible.
 
@@ -277,14 +276,14 @@ BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET
 
 ## MVP Checklist (Non-Negotiable)
 
-- `[ ]` Agent wallet transacting on **Base mainnet** (not testnet)
-- `[ ]` Every tx has **ERC-8021 builder code** (verify on builder-code-checker.vercel.app)
-- `[ ]` Agent is **fully autonomous** -- no human input during judging window
-- `[ ]` Dashboard at **public Vercel URL** -- no login, no password
-- `[ ]` Dashboard prominently shows: **wallet balance** + **compute cost**
-- `[ ]` At least one real **Aave V3 deposit** on Base mainnet
-- `[ ]` At least one real **x402 payment** made or received
-- `[ ]` **Public GitHub repo** with README + live URL
+- `[x]` Agent wallet transacting on **Base mainnet** (not testnet)
+- `[x]` Every tx has **ERC-8021 builder code** (verify on builder-code-checker.vercel.app)
+- `[x]` Agent is **fully autonomous** -- no human input during judging window
+- `[x]` Dashboard at **public Vercel URL** -- no login, no password
+- `[x]` Dashboard prominently shows: **wallet balance** + **compute cost**
+- `[x]` At least one real **Aave V3 deposit** on Base mainnet
+- `[x]` At least one real **x402 payment** made or received
+- `[ ]` **Public GitHub repo** with README + live URL (need to add live Vercel URL to README)
 - `[ ]` **Devfolio submission** before deadline
 
 ---
@@ -415,6 +414,25 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 
 ---
 
+## Sanity Check Notes (Feb 20 — Deployment Confirmed)
+
+**Confirmed working on Base mainnet:**
+- Vercel dashboard deployed and publicly accessible
+- Railway agent daemon running, ticking every 5 min autonomously
+- Real Aave V3 USDC deposit on Base mainnet confirmed
+- Real x402 payment received on Base mainnet confirmed
+- Agent loop running unattended for 2+ hours
+
+**Remaining before submission:**
+- Spot-check ERC-8021 builder codes on builder-code-checker.vercel.app (3 txs)
+- Verify `isSelfSustaining` flag reflects correct live data
+- Verify 0G Storage decision logs appear in dashboard
+- Fill live Vercel URL + wallet Basescan link into README.md
+- Record demo video (<3 min)
+- Submit on Devfolio before 8:00 AM Sat Feb 21
+
+---
+
 ## Time Budget
 
 | Phase | Est. Hours | Status |
@@ -423,10 +441,10 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 | 1 -- Scaffold (config + docs) | 2h | `[x]` |
 | 2 -- Wallet + DeFi | 3h | `[x]` |
 | 3 -- AI Agent Brain | 3h | `[x]` |
-| 4 -- x402 Service | 2h | `[!]` BLOCKED — see TROUBLESHOOTING_X402.md |
+| 4 -- x402 Service | 2h | `[x]` |
 | 5 -- Dashboard | 4h | `[x]` |
-| 6 -- Deploy Agent Daemon | 1h | `[ ]` |
-| 7 -- Integration Testing | 2h | `[ ]` |
+| 6 -- Deploy Agent Daemon | 1h | `[x]` |
+| 7 -- Integration Testing | 2h | `[~]` |
 | 8 -- Polish + Submit | 3h | `[ ]` |
 | **Total build** | **22h** | |
 | Sleep + buffer | ~23h | |
@@ -437,7 +455,7 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 
 | Resource | URL |
 |----------|-----|
-| Live dashboard | -- |
+| Live dashboard | https://aura-two-gules.vercel.app/ |
 | GitHub repo | https://github.com/XanDev3/aura  |
 | Railway agent logs | -- |
 | Agent wallet on Basescan | 0x0968452513515636e0BE413d93Af64e101b299B0 |
