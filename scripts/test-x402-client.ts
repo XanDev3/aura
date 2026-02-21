@@ -68,11 +68,32 @@ async function main() {
 
   const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
-  const queries = [
-    "What is the current Aave USDC supply APY on Base mainnet?",
-    "Compare yield opportunities on Base: Aave vs other protocols",
-    "What are the risks of supplying USDC to Aave V3 on Base?",
+  // Short, specific queries produce fewer output tokens and cost less to run.
+  // Use --count N (default 1) to run more queries in a single test session.
+  // Broad "compare everything" style questions trigger large tool responses and
+  // long model outputs — avoid those in repeated test runs.
+  const ALL_QUERIES = [
+    "What is AURA's current Aave USDC APY on Base?",
+    "What is the top USDC yield on Base right now?",
+    "What is AURA's current net P&L?",
   ];
+
+  // Accept count as either:
+  //   npm run test:x402 -- 3          (positional, works through npm)
+  //   tsx scripts/test-x402-client.ts --count 3  (flag, works for direct invocation)
+  const args = process.argv.slice(2);
+  const flagIdx = args.indexOf("--count");
+  const positional = args.find((a) => /^\d+$/.test(a));
+  let countRaw = flagIdx !== -1
+    ? parseInt(args[flagIdx + 1] ?? "", 10)
+    : positional ? parseInt(positional, 10) : 1;
+  if (!Number.isFinite(countRaw) || countRaw < 1) {
+    countRaw = 1;
+  }
+  const count = Math.min(countRaw, ALL_QUERIES.length);
+  const queries = ALL_QUERIES.slice(0, count);
+
+  console.log(`[x402 Test] Running ${queries.length} query(s). Usage: npm run test:x402 -- 3`);
 
   for (const query of queries) {
     console.log(`\n[x402 Test] Query: "${query}"`);
@@ -95,7 +116,7 @@ async function main() {
 
       const data = await response.json() as { analysis: string; tokensUsed: number; pricePaid?: string; estimatedCost?: string; margin?: string; queryTruncated?: boolean };
       const truncatedNote = data.queryTruncated ? " [query truncated to 2000 chars]" : "";
-      console.log(`[x402 Test] ✓ Paid ${data.pricePaid ?? "$0.0100"} (actual cost: ${data.estimatedCost ?? "?"}, margin: ${data.margin ?? "?"})${truncatedNote}. Response (${data.tokensUsed} tokens):`);
+      console.log(`[x402 Test] ✓ Paid ${data.pricePaid ?? "$0.0300"} (actual cost: ${data.estimatedCost ?? "?"}, margin: ${data.margin ?? "?"})${truncatedNote}. Response (${data.tokensUsed} tokens):`);
       console.log(data.analysis.slice(0, 300) + (data.analysis.length > 300 ? "..." : ""));
     } catch (err) {
       console.error(`[x402 Test] Error:`, err);
