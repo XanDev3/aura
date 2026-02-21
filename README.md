@@ -6,12 +6,12 @@ AURA is a self-sustaining autonomous AI agent that earns more than it spends on 
 
 ## Live Demo
 
-| Resource | Link |
-|----------|------|
-| 📊 Dashboard | **[aura-two-gules.vercel.app](https://aura-two-gules.vercel.app/)** |
+| Resource        | Link                                                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📊 Dashboard    | **[aura-two-gules.vercel.app](https://aura-two-gules.vercel.app/)**                                                                            |
 | 🔗 Agent Wallet | **[basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0](https://basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0)** |
-| 🎥 Demo Video | **[FILL IN VIDEO LINK]** |
-| 📁 GitHub | **[github.com/XanDev3/aura](https://github.com/XanDev3/aura)** |
+| 🎥 Demo Video   | **[FILL IN VIDEO LINK]**                                                                                                                       |
+| 📁 GitHub       | **[github.com/XanDev3/aura](https://github.com/XanDev3/aura)**                                                                                 |
 
 ---
 
@@ -27,10 +27,10 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 
 ### Revenue Sources
 
-| Source | Mechanism | Est. Return |
-|--------|-----------|-------------|
-| **Aave V3 Yield** | USDC deposited to Aave lending pool | ~3-5% APY (~$0.016/day on $150) |
-| **x402 Analysis Service** | Clients pay per query — price scales with query complexity | $0.01–$0.10/query |
+| Source                    | Mechanism                                                  | Est. Return                     |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------- |
+| **Aave V3 Yield**         | USDC deposited to Aave lending pool                        | ~3-5% APY (~$0.016/day on $150) |
+| **x402 Analysis Service** | Clients pay per query — price scales with query complexity | $0.01–$0.10/query               |
 
 ### Cost
 
@@ -52,6 +52,7 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 ```
 
 **Stack:**
+
 - Agent: Node.js + Vercel AI SDK + Claude (Haiku for ticks, Sonnet for analysis)
 - Wallet: viem + ERC-8021 builder codes (every transaction)
 - DeFi: Aave V3 on Base (USDC supply/withdraw)
@@ -59,14 +60,6 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 - Storage: 0G Storage for decentralized decision logs
 - State: Vercel KV (Redis)
 - Dashboard: Next.js 16 + Tailwind on Vercel
-
----
-
-## Bounties Targeted
-
-- **Base** — Self-Sustaining Autonomous Agents ($10,000)
-- **0g Labs** — Best DeFAI Application ($7,000)
-- **Track** — FUTURLLAMA: AI + Frontier Tech
 
 ---
 
@@ -100,18 +93,18 @@ npm run test:x402 -- 3    # runs all 3 queries
 
 ### Required Credentials
 
-| Credential | Where to Get |
-|-----------|-------------|
-| `AGENT_PRIVATE_KEY` | Create fresh wallet (MetaMask, cast) |
-| `AGENT_WALLET_ADDRESS` | Derived from private key |
-| `ERC8021_BUILDER_CODE` | base.dev → Settings → Builder Codes |
-| `ANTHROPIC_API_KEY` | platform.anthropic.com |
-| `KV_*` | Vercel Dashboard → Storage → KV |
-| `ZG_*` | build.0g.ai + faucet.0g.ai |
+| Credential             | Where to Get                         |
+| ---------------------- | ------------------------------------ |
+| `AGENT_PRIVATE_KEY`    | Create fresh wallet (MetaMask, cast) |
+| `AGENT_WALLET_ADDRESS` | Derived from private key             |
+| `ERC8021_BUILDER_CODE` | base.dev → Settings → Builder Codes  |
+| `ANTHROPIC_API_KEY`    | platform.anthropic.com               |
+| `KV_*`                 | Vercel Dashboard → Storage → KV      |
+| `ZG_*`                 | build.0g.ai + faucet.0g.ai           |
 
 ---
 
-## How Judges Can Verify Self-Sustainability
+## Verify Self-Sustainability
 
 1. Open the dashboard at the live URL (no login required)
 2. Look at the **StatusBadge** — shows `SELF-SUSTAINING ✓` or `DEFICIT ✗`
@@ -140,6 +133,7 @@ AURA is designed to be safe by construction:
 The agent can be paused without touching Railway. It will keep running but skip every tick until unpaused.
 
 **To pause:**
+
 1. Go to [vercel.com](https://vercel.com) → your project → **Storage** → select your KV store
 2. Click **Open in Upstash** — this opens the Upstash console for your KV store
 3. In the Upstash console, click the **CLI** tab
@@ -147,6 +141,7 @@ The agent can be paused without touching Railway. It will keep running but skip 
 5. Within 5 minutes the Railway logs will show: `Agent is paused — skipping tick`
 
 **To resume:**
+
 1. Return to the same Upstash CLI tab
 2. Run: `DEL aura:paused`
 3. The next interval the agent ticks normally
@@ -155,4 +150,4 @@ The agent can be paused without touching Railway. It will keep running but skip 
 
 ---
 
-*Built at ETHDenver 2026 · Solo · ~45 hours*
+_Built at ETHDenver 2026 · Solo · ~45 hours_
