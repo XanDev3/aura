@@ -35,7 +35,7 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 ### Cost
 
 - Claude Haiku for routine ticks: ~$0.002 per tick, ~$0.50/day
-- Claude Sonnet for paid x402 analysis: ~$0.005–$0.010 per request (actual cost)
+- Claude Sonnet for paid x402 analysis: ~\$0.010–\$0.015 per request for typical queries (including tool overhead)
 - x402 pricing uses 3x margin on estimated Sonnet cost → every request profitable
 - Queries capped at 2000 chars — prevents adversarial token-drain
 - Covered by Aave yield + x402 revenue
