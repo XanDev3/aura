@@ -84,10 +84,14 @@ async function main() {
   const args = process.argv.slice(2);
   const flagIdx = args.indexOf("--count");
   const positional = args.find((a) => /^\d+$/.test(a));
-  const count = flagIdx !== -1
-    ? parseInt(args[flagIdx + 1] ?? "1", 10)
+  let countRaw = flagIdx !== -1
+    ? parseInt(args[flagIdx + 1] ?? "", 10)
     : positional ? parseInt(positional, 10) : 1;
-  const queries = ALL_QUERIES.slice(0, Math.min(count, ALL_QUERIES.length));
+  if (!Number.isFinite(countRaw) || countRaw < 1) {
+    countRaw = 1;
+  }
+  const count = Math.min(countRaw, ALL_QUERIES.length);
+  const queries = ALL_QUERIES.slice(0, count);
 
   console.log(`[x402 Test] Running ${queries.length} query(s). Usage: npm run test:x402 -- 3`);
 
