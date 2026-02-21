@@ -36,7 +36,7 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 
 - Claude Haiku for routine ticks: ~$0.002 per tick, ~$0.50/day
 - Claude Sonnet for paid x402 analysis: ~$0.005–$0.010 per request (actual cost)
-- x402 pricing uses 2x margin on estimated Sonnet cost → every request profitable
+- x402 pricing uses 3x margin on estimated Sonnet cost → every request profitable
 - Queries capped at 2000 chars — prevents adversarial token-drain
 - Covered by Aave yield + x402 revenue
 
@@ -87,7 +87,16 @@ npm run dev
 
 # 4. Start agent (separate terminal)
 npm run agent:dev
+
+# 5. (Optional) Test x402 payment flow
+npm run test:x402          # runs 1 query (default — cheapest)
+npm run test:x402 -- 2    # runs 2 queries
+npm run test:x402 -- 3    # runs all 3 queries
 ```
+
+> **npm arg quirk:** flags like `--count` are consumed by npm before reaching the script.
+> Always use the bare `-- N` form (with the `--` separator) when running via `npm run`.
+> For direct invocation: `tsx scripts/test-x402-client.ts --count 3`
 
 ### Required Credentials
 

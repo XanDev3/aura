@@ -50,9 +50,9 @@ export const analyzeTools = {
       topN: z
         .number()
         .optional()
-        .describe("Maximum number of results to return. Defaults to 10."),
+        .describe("Maximum number of results to return. Defaults to 5."),
     }),
-    execute: async ({ chain = "Base", token, protocol, topN = 10 }) => {
+    execute: async ({ chain = "Base", token, protocol, topN = 5 }) => {
       try {
         const res = await fetch("https://yields.llama.fi/pools", {
           headers: { Accept: "application/json" },
