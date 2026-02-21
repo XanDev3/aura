@@ -66,8 +66,8 @@ const MARGIN_MULTIPLIER = 3.0;
 
 /**
  * Floor price per query.
- * Raised from $0.02 to $0.03: even a trivial query costs ~$0.010–$0.015 in
- * actual inference once tool overhead is included, so $0.02 left no margin.
+ * Raised from $0.01 to $0.03: even a trivial query costs ~$0.010–$0.015 in
+ * actual inference once tool overhead is included, so a $0.01 floor left no margin.
  * $0.03 provides ~2x margin on the simplest possible query.
  */
 export const PRICE_FLOOR = 0.03;
