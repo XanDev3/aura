@@ -253,8 +253,8 @@
 | `[x]` | Let agent run unattended for 2+ hours | 2h |
 | `[x]` | Run `npm run test:x402` multiple times to generate x402 revenue | 10 min |
 | `[ ]` | Spot-check 3 txs on builder-code-checker.vercel.app | 10 min |
-| `[ ]` | Verify `isSelfSustaining` flag logic is correct in live dashboard | 10 min |
-| `[ ]` | Verify 0G Storage logs readable in dashboard | 10 min |
+| `[x]` | Verify `isSelfSustaining` flag logic is correct in live dashboard | 10 min |
+| `[x]` | Verify 0G Storage logs readable in dashboard (bug fixed Feb 20 — wrong KV key in /api/stats) | 10 min |
 | `[x]` | Verify Railway auto-restarts cleanly | 5 min |
 
 **Exit criteria:** 2+ hours autonomous operation confirmed. x402 revenue visible.
@@ -290,11 +290,11 @@
 
 ## Win Checklist (Above MVP)
 
-- `[ ]` `isSelfSustaining: true` provable on dashboard (revenue > compute cost)
-- `[ ]` Dual revenue: Aave yield + x402 service fees both showing
-- `[ ]` 0G Storage decision logs visible in dashboard (decentralized AI reasoning)
-- `[ ]` Runway meter: "Agent self-funded for X more hours"
-- `[ ]` All ERC-8021 builder codes verified on Basescan
+- `[ ]` `isSelfSustaining: true` provable on dashboard (revenue > compute cost) — currently DEFICIT ($0.11 rev / $0.35 cost after 25 ticks). Run more x402 traffic to close gap.
+- `[x]` Dual revenue: Aave yield + x402 service fees both showing (live in /api/stats)
+- `[x]` 0G Storage decision logs visible in dashboard (confirmed Feb 20 after bug fix)
+- `[x]` Runway meter: "Agent self-funded for X more hours" (shows 0h in DEFICIT — correct)
+- `[ ]` All ERC-8021 builder codes verified on Basescan (spot-check 3 txs: approve + supply on Basescan → builder-code-checker.vercel.app)
 
 ---
 
@@ -424,12 +424,36 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 - Agent loop running unattended for 2+ hours
 
 **Remaining before submission:**
-- Spot-check ERC-8021 builder codes on builder-code-checker.vercel.app (3 txs)
-- Verify `isSelfSustaining` flag reflects correct live data
-- Verify 0G Storage decision logs appear in dashboard
-- Fill live Vercel URL + wallet Basescan link into README.md
-- Record demo video (<3 min)
-- Submit on Devfolio before 8:00 AM Sat Feb 21
+- `[x]` Fill live Vercel URL into README.md — https://aura-two-gules.vercel.app/
+- `[x]` Verify `isSelfSustaining` flag reflects correct live data — confirmed working (correctly shows DEFICIT)
+- `[x]` Verify 0G Storage decision logs appear in dashboard — confirmed after /api/stats bug fix
+- `[ ]` Spot-check ERC-8021 builder codes on builder-code-checker.vercel.app (3 txs) — do manually on Basescan
+- `[ ]` Record demo video (<3 min)
+- `[ ]` Submit on Devfolio before 8:00 AM Sat Feb 21
+
+---
+
+## Sanity Check Notes (Feb 20 — Phase 7 Integration Testing)
+
+**Live stats from /api/stats (verified):**
+- `totalTicks: 25` — agent running on Railway, ticking every 5 min ✓
+- `liquidUsdcBalance: 34.86`, `aavePosition.depositedUsdc: 65` — $99.86 USDC total, above $25 floor ✓
+- `x402RevenueUsd: 0.11` — real x402 payments received on mainnet ✓
+- `computeCostTotalUsd: 0.354` — cost tracking working ✓
+- `isSelfSustaining: false` — DEFICIT mode, logic correct (0.11 < 0.354). Need more x402 traffic. ✓
+- `runwayHours: 0` — correct (only positive when isSelfSustaining) ✓
+
+**Bug found and fixed (Feb 20):**
+- **[CRITICAL — fixed]** `decisionLog: []` in /api/stats despite agent calling `logDecision` each tick.
+  Root cause: `logDecision` tool writes entries to `aura:zg:logs` KV key; but `/api/stats` only read `aura:state`
+  (which has `decisionLog: []`). Fix: added `readDecisionLogs(10)` call in `/api/stats/route.ts` and merge
+  into response. Confirmed working — dashboard DecisionLog component now shows agent decisions.
+
+**How to find transactions for ERC-8021 builder code verification:**
+- Go to basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0
+- Look for outgoing txs in the Transactions tab (wallet is the "From" address)
+- Method column shows "Approve" (to USDC contract) and "Supply" (to Aave Pool) — those have dataSuffix
+- Paste 3 tx hashes into builder-code-checker.vercel.app
 
 ---
 

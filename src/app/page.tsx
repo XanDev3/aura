@@ -49,7 +49,7 @@ export default function Dashboard() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center gap-4 text-sm text-slate-400">
           <span>Base Mainnet</span>
           <span>·</span>
           <span>Aave V3 + x402</span>
@@ -60,7 +60,7 @@ export default function Dashboard() {
             <span>Loading...</span>
           )}
           <span>·</span>
-          <span className="text-slate-600">Refreshes every 30s</span>
+          <span className="text-slate-400">Refreshes every 30s</span>
         </div>
       </header>
 
@@ -98,7 +98,7 @@ export default function Dashboard() {
           <DecisionLog state={state} />
 
           {/* Footer */}
-          <footer className="text-center text-xs text-slate-600 pt-4 pb-8 space-y-1">
+          <footer className="text-center text-xs text-slate-400 pt-4 pb-8 space-y-1">
             <div>
               Agent wallet:{" "}
               <a

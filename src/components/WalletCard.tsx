@@ -45,7 +45,7 @@ export function WalletCard({ state }: { state: AgentState }) {
               ).toFixed(2)}
             </span>
           </div>
-          <p className="text-xs text-slate-600 mt-1">liquid + Aave deposit</p>
+          <p className="text-sm text-slate-400 mt-1">liquid + Aave deposit</p>
         </div>
       </div>
     </div>

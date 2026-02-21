@@ -15,7 +15,7 @@ export function PLChart({ state }: { state: AgentState }) {
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
           P&amp;L Chart — Revenue vs Compute Cost
         </h2>
-        <div className="h-32 flex items-center justify-center text-slate-600 text-sm">
+        <div className="h-32 flex items-center justify-center text-slate-400 text-sm">
           Accumulating data... ({entries.length} ticks logged)
         </div>
       </div>
@@ -73,7 +73,7 @@ export function PLChart({ state }: { state: AgentState }) {
               return (
                 <g key={pct}>
                   <line x1={0} y1={y} x2={chartW} y2={y} stroke="#1e2a4a" strokeDasharray="2 4" />
-                  <text x={-4} y={y + 4} textAnchor="end" fill="#475569" fontSize={8}>
+                  <text x={-4} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize={10}>
                     ${val.toFixed(3)}
                   </text>
                 </g>

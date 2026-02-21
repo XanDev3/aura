@@ -53,7 +53,7 @@ export function AavePosition({ state }: { state: AgentState }) {
                 +${pos.yieldEarnedTotalUsd.toFixed(5)} USDC
               </span>
             </div>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               Daily est.: ${((pos.depositedUsdc * pos.currentApyPct) / 100 / 365).toFixed(4)}
             </p>
           </div>
