@@ -92,6 +92,11 @@
 | `src/lib/tracking/compute.ts` | `[x]` | Accumulate Claude API call costs to Vercel KV. Haiku pricing: $1/M input, $5/M output |
 | `src/lib/tracking/revenue.ts` | `[x]` | Track Aave yield delta (currentAToken - depositedUsdc) + x402 service fees |
 
+### Core Library -- Pricing
+| File | Status | Notes |
+|------|--------|-------|
+| `src/lib/pricing/estimator.ts` | `[x]` | **Dynamic x402 pricing.** `estimatePrice(query)` — estimates Sonnet cost from query length (2x margin, floor $0.01, cap $0.10). `MAX_QUERY_CHARS=2000` hard cap prevents token-drain abuse. |
+
 ### Core Library -- Storage
 | File | Status | Notes |
 |------|--------|-------|
@@ -101,7 +106,7 @@
 | File | Status | Notes |
 |------|--------|-------|
 | `middleware.ts` (project root) | `[x]` | **STRIPPED to pass-through** — x402 moved to API route due to Edge Runtime incompatibility. See [TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md). |
-| `src/app/api/analyze/route.ts` | `[x]` | x402 gating confirmed working via `withX402` wrapper + CDP JWT auth. 3 paid requests completed in testing (Feb 2026). See [TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md). |
+| `src/app/api/analyze/route.ts` | `[x]` | x402 gating confirmed working via `withX402` wrapper + CDP JWT auth. **Dynamic pricing** via `dynamicPrice` fn (Feb 20). `WeakMap` body cache solves double-stream-read. Response enriched with `pricePaid`, `estimatedCost`, `margin`, `queryTruncated`. |
 
 ### Test Scripts
 | File | Status | Notes |
@@ -199,7 +204,8 @@
 
 > **CONFIRMED WORKING** (Feb 2026). All 3 test queries paid 0.01 USDC each via EIP-3009 on Base mainnet.
 > See **[TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md)** for full debug history (6 failures resolved).
-> Key requirement: `TEST_BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET_ADDRESS`.
+> Key requirement: `
+BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET_ADDRESS`.
 
 | Status | Task | Est. |
 |--------|------|-------|
@@ -330,6 +336,8 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 | Feb 19 | **$150-200 USDC seed capital** | $75 yield too low; $150-200 + x402 revenue makes sustainability credible |
 | Feb 19 | **viem-only for Aave** (removed `@aave/contract-helpers`) | `@aave/contract-helpers` requires ethers; raw viem is simpler |
 | Feb 19 | **`@x402/next` middleware** replaces custom x402 logic | Library handles payment validation, facilitator communication, 402 responses |
+| Feb 20 | **Dynamic x402 pricing** via `DynamicPrice` function | Flat $0.01 was a loss on large queries. Now estimates Sonnet cost per query (2x margin). `withX402` supports function for `price` field. WeakMap solves body double-read. |
+| Feb 20 | **Query length cap: `MAX_QUERY_CHARS=2000`** | Prevents adversarial token-drain. Any query truncated to 2000 chars before both pricing and inference. Max cost per request bounded to ~$0.0094. |
 | Feb 19 | **CDP facilitator for mainnet x402** | Free testnet facilitator doesn't support Base mainnet; CDP required |
 | Feb 19 | **0G SDK bumped to v0.3.1** | v0.2.1 outdated; v0.3.1 is latest with Batcher API for KV data |
 | Feb 19 | **`tsx` moved to deps** (not devDeps) | Railway needs tsx at runtime for `npm run agent:start` |
@@ -382,6 +390,28 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 - **[minor — fixed]** ARCHITECTURE.md section 4 updated to show the correct per-transaction `dataSuffix` pattern and renamed export.
 
 **State after this session:** All source files written and type-check clean. Remaining work is Phase 0 (credentials), Phase 6 (deploy to Railway + Vercel), Phase 7 (integration test), Phase 8 (submit).
+
+---
+
+## Sanity Check Notes (Feb 20 — Dynamic Pricing)
+
+**Added dynamic x402 pricing to `/api/analyze`:**
+- `withX402` accepts a `DynamicPrice` function as the `price` config field (confirmed from @x402/core source: `typeof option.price === "function" ? await option.price(context) : option.price`)
+- Price is estimated pre-inference from query text length using Sonnet pricing ($3/M in, $15/M out) with 2x margin
+- Query hard-capped at `MAX_QUERY_CHARS = 2000` — adversarial long queries are truncated before pricing and inference, bounding max cost to ~$0.0094/request
+- Body stream double-read solved with `WeakMap<NextRequest, ...>` cache: `dynamicPrice()` reads body via `context.adapter.getBody()`, caches it; handler reads from cache
+- Revenue tracker updated to use actual dynamic amount (not hardcoded $0.01)
+- Response now includes `pricePaid`, `estimatedCost`, `margin`, `queryTruncated` for transparency
+- Test client updated to log dynamic price info
+
+**Price range in practice:**
+- Short query (30 chars) → $0.01 floor
+- Typical query (200 chars) → ~$0.0115
+- Long query (800 chars) → ~$0.0142
+- Max (2000 chars) → ~$0.0189
+- Any abuse attempt (100k chars) → truncated to 2000 chars, priced as 2000 chars
+
+**Files changed:** `src/lib/pricing/estimator.ts` (new), `src/app/api/analyze/route.ts` (modified), `scripts/test-x402-client.ts` (minor)
 
 ---
 

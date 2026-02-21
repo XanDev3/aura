@@ -7,7 +7,9 @@ import { readState, writeState, computeDerivedFields } from "@/lib/agent/state";
 import { withX402, x402ResourceServer } from "@x402/next";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import type { HTTPRequestContext } from "@x402/core/server";
 import { getAuthHeaders } from "@coinbase/cdp-sdk/auth";
+import { estimatePrice, formatX402Price, MAX_QUERY_CHARS } from "@/lib/pricing/estimator";
 
 // Build CDP JWT auth headers for each x402 facilitator endpoint.
 // HTTPFacilitatorClient does NOT auto-detect CDP credentials — must be explicit.
@@ -38,16 +40,66 @@ const x402Server = new x402ResourceServer(facilitatorClient).register(
   new ExactEvmScheme()
 );
 
+// Body cache: populated by dynamicPrice(), read by handler().
+// WeakMap ensures GC when the request goes out of scope — no memory leak.
+// Required because context.adapter.getBody() consumes the body stream, preventing
+// the handler from calling req.json() afterward.
+const bodyCache = new WeakMap<
+  NextRequest,
+  { query: string; estimatedPrice: number; queryTruncated: boolean }
+>();
+
+/**
+ * Dynamic price function for withX402.
+ * Called on Phase 1 (402 quote) and Phase 2 (payment verification).
+ * Reads the query body, caps at MAX_QUERY_CHARS, estimates Sonnet inference cost,
+ * and caches the parsed body so handler() can read it without double-consuming the stream.
+ */
+const dynamicPrice = async (context: HTTPRequestContext): Promise<string> => {
+  try {
+    // Access the underlying NextRequest to use as WeakMap key.
+    // context.adapter is NextAdapter with a private .req field — stable across @x402/next 2.x.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nextReq = (context.adapter as any).req as NextRequest;
+    const body = await context.adapter.getBody?.() as { query?: string } | undefined;
+    const rawQuery = (typeof body?.query === "string" ? body.query : "").trim();
+    const queryTruncated = rawQuery.length > MAX_QUERY_CHARS;
+    // Cap to MAX_QUERY_CHARS — this is what will actually be sent to the model
+    const query = rawQuery.slice(0, MAX_QUERY_CHARS);
+    const price = estimatePrice(query);
+    bodyCache.set(nextReq, { query, estimatedPrice: price, queryTruncated });
+    return formatX402Price(price);
+  } catch {
+    // On any parse error, return floor price — handler will 400 on invalid body
+    return formatX402Price(0.01);
+  }
+};
+
 /**
  * POST /api/analyze
- * x402-gated DeFi analysis endpoint.
- * Payment is validated by withX402 wrapper (runs in Node.js runtime, not Edge).
- * Uses Claude Sonnet for quality analysis (this is a paid endpoint).
+ * x402-gated DeFi analysis endpoint with dynamic per-query pricing.
+ * Payment is validated by withX402 (Node.js runtime). Query length is capped at
+ * MAX_QUERY_CHARS to prevent token-drain abuse regardless of what the client sends.
  */
 async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
   try {
-    const body = await req.json();
-    const query: string = body?.query ?? "";
+    // Read from body cache populated by dynamicPrice() — body stream already consumed.
+    const cached = bodyCache.get(req);
+    bodyCache.delete(req); // cleanup: handler only runs once per settled request
+
+    // query is already sliced to MAX_QUERY_CHARS by dynamicPrice()
+    let query = cached?.query ?? "";
+    const estimatedPrice = cached?.estimatedPrice ?? 0.01;
+    const queryTruncated = cached?.queryTruncated ?? false;
+
+    // Fallback if the WeakMap key access failed (e.g. private field renamed in future package version)
+    if (!cached) {
+      try {
+        const body = await req.json();
+        const raw = (typeof body?.query === "string" ? body.query : "").trim();
+        query = raw.slice(0, MAX_QUERY_CHARS);
+      } catch { /* ignore — validation below handles empty query */ }
+    }
 
     if (!query || query.trim().length < 3) {
       return NextResponse.json(
@@ -66,8 +118,8 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
       maxSteps: 1,
     });
 
-    // Track x402 revenue — $0.01 per request (matches route price)
-    const newX402Total = await trackX402Revenue(0.01);
+    // Track actual dynamic revenue (not hardcoded $0.01)
+    const newX402Total = await trackX402Revenue(estimatedPrice);
 
     // Record compute cost for this Sonnet call
     const { totalUsd } = await recordComputeCost({
@@ -75,6 +127,11 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
       completionTokens: result.usage.completionTokens,
       model: "sonnet",
     });
+
+    // Compute actual inference cost for transparency metrics
+    const actualCost =
+      (result.usage.promptTokens / 1_000_000) * 3.0 +
+      (result.usage.completionTokens / 1_000_000) * 15.0;
 
     // Update KV state to reflect the new revenue
     const state = await readState();
@@ -89,6 +146,10 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
       analysis: result.text,
       model: process.env.AGENT_ANALYSIS_MODEL || "claude-sonnet-4-5",
       tokensUsed: result.usage.promptTokens + result.usage.completionTokens,
+      pricePaid: formatX402Price(estimatedPrice),
+      estimatedCost: `$${actualCost.toFixed(5)}`,
+      margin: `${(estimatedPrice / Math.max(actualCost, 0.0001)).toFixed(2)}x`,
+      queryTruncated,
     });
   } catch (err) {
     console.error("[/api/analyze] Error:", err);
@@ -105,12 +166,12 @@ export const POST = withX402(
     accepts: [
       {
         scheme: "exact",
-        price: "$0.01",
+        price: dynamicPrice,
         network: "eip155:8453",
         payTo: process.env.AGENT_WALLET_ADDRESS!,
       },
     ],
-    description: "AURA DeFi Analysis — 0.01 USDC per query",
+    description: "AURA DeFi Analysis — dynamic pricing by query complexity",
     mimeType: "application/json",
   },
   x402Server

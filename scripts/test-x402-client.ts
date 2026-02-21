@@ -93,8 +93,9 @@ async function main() {
         continue;
       }
 
-      const data = await response.json() as { analysis: string; tokensUsed: number };
-      console.log(`[x402 Test] ✓ Paid 0.01 USDC. Response (${data.tokensUsed} tokens):`);
+      const data = await response.json() as { analysis: string; tokensUsed: number; pricePaid?: string; estimatedCost?: string; margin?: string; queryTruncated?: boolean };
+      const truncatedNote = data.queryTruncated ? " [query truncated to 2000 chars]" : "";
+      console.log(`[x402 Test] ✓ Paid ${data.pricePaid ?? "$0.0100"} (actual cost: ${data.estimatedCost ?? "?"}, margin: ${data.margin ?? "?"})${truncatedNote}. Response (${data.tokensUsed} tokens):`);
       console.log(data.analysis.slice(0, 300) + (data.analysis.length > 300 ? "..." : ""));
     } catch (err) {
       console.error(`[x402 Test] Error:`, err);

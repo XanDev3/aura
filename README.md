@@ -29,15 +29,16 @@ AURA is an AI agent (Claude via Vercel AI SDK) running autonomously on Base main
 
 | Source | Mechanism | Est. Return |
 |--------|-----------|-------------|
-| **Aave V3 Yield** | USDC deposited to Aave lending pool | ~3-5% APY |
-| **x402 Analysis Service** | Clients pay 0.01 USDC to query Claude for DeFi analysis | Variable |
+| **Aave V3 Yield** | USDC deposited to Aave lending pool | ~3-5% APY (~$0.016/day on $150) |
+| **x402 Analysis Service** | Clients pay per query — price scales with query complexity | $0.01–$0.10/query |
 
 ### Cost
 
-- Claude Haiku for routine ticks: ~$0.002 per tick
-- ~$0.50/day at 5-min intervals (288 ticks/day)
-- Claude Sonnet for paid x402 analysis: ~$0.015 per request
-- Covered by Aave yield on ~$150-200 USDC seed + x402 service revenue
+- Claude Haiku for routine ticks: ~$0.002 per tick, ~$0.50/day
+- Claude Sonnet for paid x402 analysis: ~$0.005–$0.010 per request (actual cost)
+- x402 pricing uses 2x margin on estimated Sonnet cost → every request profitable
+- Queries capped at 2000 chars — prevents adversarial token-drain
+- Covered by Aave yield + x402 revenue
 
 ---
 
@@ -118,6 +119,7 @@ AURA is designed to be safe by construction:
 - **Only USDC** — principal never in volatile assets
 - **Hard floor** — never lets total USDC drop below $25
 - **No leverage** — only simple lending, no borrowing
+- **Abuse-resistant** — x402 queries capped at 2000 chars; dynamic pricing ensures margin on every request
 - **Transparent** — all decisions logged to 0G Storage
 - **Observable** — public dashboard, no passwords
 - **Pausable** — manual kill-switch via Vercel KV, no Railway restart needed

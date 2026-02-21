@@ -30,15 +30,17 @@ AURA is a self-sustaining AI agent that earns more than it spends on compute —
 
 ### Cost Model (Realistic)
 
-| Item                                                    | Cost            |
-| ------------------------------------------------------- | --------------- |
-| Haiku tick (~1000 input + ~150 output tokens)           | ~$0.002/tick    |
-| 288 ticks/day (every 5 min)                             | ~$0.50/day      |
-| Sonnet x402 analysis (~2000 input + ~500 output tokens) | ~$0.015/request |
-| Aave yield on $150 at 4% APY                            | ~$0.016/day     |
-| Break-even x402 requests needed                         | ~32/day         |
+| Item                                                    | Cost                     |
+| ------------------------------------------------------- | ------------------------ |
+| Haiku tick (~1000 input + ~150 output tokens)           | ~$0.002/tick             |
+| 288 ticks/day (every 5 min)                             | ~$0.50/day               |
+| Sonnet x402 analysis — short query (~250+75 in, ~300 out) | ~$0.0100 (floor)       |
+| Sonnet x402 analysis — typical query (~250+200 in, ~317 out) | ~$0.0115            |
+| Sonnet x402 analysis — max query (2000 chars capped)   | ~$0.0189                 |
+| Aave yield on $150 at 4% APY                            | ~$0.016/day              |
+| Break-even x402 requests needed                         | ~27-50/day (query-size dependent) |
 
-**Strategy:** Haiku handles cheap routine ticks; Aave yield + x402 service fees together cover compute. The dashboard shows trajectory toward full self-sustainability.
+**Strategy:** Haiku handles cheap routine ticks; Aave yield + x402 service fees together cover compute. Dynamic pricing (2x margin on estimated Sonnet cost) ensures every analysis request is profitable regardless of query size. The dashboard shows trajectory toward full self-sustainability.
 
 ### Three Services
 
@@ -161,6 +163,8 @@ aura/
     |   +-- tracking/
     |   |   +-- compute.ts           <-- Accumulate LLM call costs
     |   |   +-- revenue.ts           <-- Track yield + x402 fees
+    |   +-- pricing/
+    |   |   +-- estimator.ts         <-- Dynamic x402 price estimation (query length → Sonnet cost)
     |   +-- storage/
     |       +-- zero-g.ts            <-- 0G Storage upload + KV fallback
     +-- app/                 <-- Next.js App Router (Vercel)
@@ -542,77 +546,87 @@ const outputTokens = result.totalUsage.completionTokens;
 
 ---
 
-## 8. x402 Analysis Service (`middleware.ts` + `src/app/api/analyze/route.ts`)
+## 8. x402 Analysis Service (`src/app/api/analyze/route.ts`)
 
-AURA sells DeFi analysis on-demand using the **x402 protocol**. Payment gating is handled by `@x402/next` middleware — you do NOT write custom payment validation.
+AURA sells DeFi analysis on-demand using the **x402 protocol** with **dynamic per-query pricing**. Payment gating lives in the route handler (NOT middleware.ts) because Next.js middleware runs in Edge Runtime which lacks the Node.js crypto APIs required by `@x402/evm`.
 
-### Middleware Setup (`middleware.ts` at project root)
+### Why Route-Level, Not Middleware
+
+`middleware.ts` is a pass-through stub. x402 gating is handled by the `withX402` wrapper in the route file, which runs in Node.js runtime. See TROUBLESHOOTING_X402.md for full debug history.
+
+### Dynamic Pricing (`src/lib/pricing/estimator.ts`)
+
+Price is estimated pre-inference from the query text length using a token approximation:
 
 ```typescript
-import { paymentProxy, x402ResourceServer } from "@x402/next";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-
-const facilitatorClient = new HTTPFacilitatorClient({
-  url:
-    process.env.X402_FACILITATOR_URL ||
-    "https://api.cdp.coinbase.com/platform/v2/x402",
-});
-
-const server = new x402ResourceServer(facilitatorClient).register(
-  "eip155:8453",
-  new ExactEvmScheme(),
-); // Base mainnet = chain ID 8453
-
-export const middleware = paymentProxy(
-  {
-    "/api/analyze": {
-      accepts: [
-        {
-          scheme: "exact",
-          price: "$0.01",
-          network: "eip155:8453",
-          payTo: process.env.AGENT_WALLET_ADDRESS!,
-        },
-      ],
-      description: "AURA DeFi Analysis -- 0.01 USDC per query",
-      mimeType: "application/json",
-    },
-  },
-  server,
-);
-
-export const config = {
-  matcher: ["/api/analyze/:path*"],
-};
+// MAX_QUERY_CHARS = 2000 — hard cap for abuse protection
+const effectiveChars = Math.min(query.length, MAX_QUERY_CHARS);
+const queryTokens = Math.ceil(effectiveChars / 4);
+const inputTokens = 250 /*system prompt*/ + queryTokens;
+const outputTokens = 300 + Math.ceil(effectiveChars / 12);
+// Sonnet: $3/M input, $15/M output — 2x margin
+const price = clamp(rawCost * 2.0, min=$0.01, max=$0.10);
 ```
 
-### Route Handler (`src/app/api/analyze/route.ts`)
+**Abuse protection:** Any query exceeding 2000 characters is silently truncated before both pricing and inference. Max spend per request is bounded to ~$0.0094 regardless of what the client sends. Response includes `queryTruncated: true` if truncation occurred.
 
-This code only executes after x402 payment is verified by the middleware:
+### Body Cache Pattern
+
+`withX402` calls the price function before the handler. `context.adapter.getBody()` consumes the HTTP body stream, so the handler can't call `req.json()` again. Solution: `WeakMap<NextRequest, ...>` populated in the price function, read in the handler.
+
+### Route Handler (Current Implementation)
 
 ```typescript
-export async function POST(req: Request) {
-  // Payment already validated by middleware
-  const { query } = await req.json();
+// Body cache — solves double-stream-read problem
+const bodyCache = new WeakMap<NextRequest, { query: string; estimatedPrice: number; queryTruncated: boolean }>();
 
-  // Use Sonnet for quality analysis (paid endpoint)
+// DynamicPrice function — passed to withX402 instead of a static string
+const dynamicPrice = async (context: HTTPRequestContext): Promise<string> => {
+  const nextReq = (context.adapter as any).req as NextRequest;
+  const body = await context.adapter.getBody?.() as { query?: string } | undefined;
+  const rawQuery = (body?.query ?? "").trim();
+  const query = rawQuery.slice(0, MAX_QUERY_CHARS); // abuse cap
+  const price = estimatePrice(query);
+  bodyCache.set(nextReq, { query, estimatedPrice: price, queryTruncated: rawQuery.length > MAX_QUERY_CHARS });
+  return formatX402Price(price); // e.g. "$0.0142"
+};
+
+async function handler(req: NextRequest) {
+  const cached = bodyCache.get(req);
+  bodyCache.delete(req);
+  const query = cached?.query ?? "";
+  const estimatedPrice = cached?.estimatedPrice ?? 0.01;
+
   const result = await generateText({
-    model: anthropic(process.env.AGENT_ANALYSIS_MODEL || "claude-sonnet-4-5"),
+    model: anthropic("claude-sonnet-4-5"),
     prompt: `Analyze this DeFi topic: ${query}`,
     maxSteps: 1,
   });
 
-  // Track x402 revenue in KV
-  await trackX402Revenue(0.01);
+  await trackX402Revenue(estimatedPrice); // actual amount, not hardcoded
 
-  return Response.json({ analysis: result.text });
+  return NextResponse.json({
+    analysis: result.text,
+    pricePaid: formatX402Price(estimatedPrice),
+    estimatedCost: `$${actualCost.toFixed(5)}`,
+    margin: `${(estimatedPrice / actualCost).toFixed(2)}x`,
+    queryTruncated: cached?.queryTruncated,
+  });
 }
+
+export const POST = withX402(handler, {
+  accepts: [{ scheme: "exact", price: dynamicPrice, network: "eip155:8453", payTo: process.env.AGENT_WALLET_ADDRESS! }],
+  description: "AURA DeFi Analysis — dynamic pricing by query complexity",
+  mimeType: "application/json",
+}, x402Server);
 ```
 
 ### Revenue Tracking
 
-The x402 middleware handles payment validation + settlement via the CDP facilitator. Revenue tracking (incrementing `x402RevenueUsd` in KV) is done in the route handler after successful response.
+`trackX402Revenue(estimatedPrice)` is called with the actual dynamic amount (not hardcoded $0.01). The amount reflects the pre-inference price estimate used in the 402 response.
+
+### Claude's system prompt (for x402 analysis)
+Uses a shorter, analysis-focused system prompt (~250 tokens constant overhead). The `SYSTEM_PROMPT_TOKENS = 250` constant in `estimator.ts` should be updated if the system prompt changes significantly.
 
 ### Facilitator URLs
 
