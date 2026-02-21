@@ -100,7 +100,8 @@
 ### x402 Payment Gate
 | File | Status | Notes |
 |------|--------|-------|
-| `middleware.ts` (project root) | `[x]` | Uses `@x402/next` `paymentProxy` + `x402ResourceServer` with CDP facilitator. eip155:8453. |
+| `middleware.ts` (project root) | `[x]` | **STRIPPED to pass-through** — x402 moved to API route due to Edge Runtime incompatibility. See [TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md). |
+| `src/app/api/analyze/route.ts` | `[x]` | x402 gating confirmed working via `withX402` wrapper + CDP JWT auth. 3 paid requests completed in testing (Feb 2026). See [TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md). |
 
 ### Test Scripts
 | File | Status | Notes |
@@ -141,7 +142,7 @@
 |--------|------|------|
 | `[ ]` | Register ERC-8021 builder code on **base.dev** | 5 min |
 | `[ ]` | Get Claude API key | 5 min |
-| `[ ]` | Create and fund agent wallet (ETH + **$150-200 USDC** on Base mainnet) | 15 min |
+| `[ ]` | Create and fund agent wallet (ETH + **$100 USDC** on Base mainnet) | 15 min |
 | `[ ]` | Create GitHub repo, push `aura/` directory | 10 min |
 | `[ ]` | Create Vercel project + KV store, copy env vars | 15 min |
 | `[ ]` | Create Railway project, link to GitHub | 10 min |
@@ -194,15 +195,19 @@
 
 ---
 
-### PHASE 4 -- x402 Analysis Service (~2h) `[x]`
+### PHASE 4 -- x402 Analysis Service (~2h) `[x]` COMPLETE
+
+> **CONFIRMED WORKING** (Feb 2026). All 3 test queries paid 0.01 USDC each via EIP-3009 on Base mainnet.
+> See **[TROUBLESHOOTING_X402.md](TROUBLESHOOTING_X402.md)** for full debug history (6 failures resolved).
+> Key requirement: `TEST_BUYER_PRIVATE_KEY` in `.env.local` must be a DIFFERENT wallet from `AGENT_WALLET_ADDRESS`.
 
 | Status | Task | Est. |
 |--------|------|-------|
-| `[ ]` | Write `middleware.ts` (project root) using `@x402/next` `paymentProxy` | 30 min |
-| `[ ]` | Write `src/app/api/analyze/route.ts` (Sonnet for analysis, track revenue in KV) | 20 min |
-| `[ ]` | Write `scripts/test-x402-client.ts` using `@x402/fetch` + `@x402/evm` | 20 min |
-| `[ ]` | Test x402 flow: run test script -> verify 402 -> payment -> response | 15 min |
-| `[ ]` | Confirm payment credited to revenue tracker in KV | 10 min |
+| `[x]` | Write `middleware.ts` — stripped to pass-through (x402 moved to route handler) | done |
+| `[x]` | Write `src/app/api/analyze/route.ts` with `withX402` + CDP JWT auth | done |
+| `[x]` | Write `scripts/test-x402-client.ts` using `@x402/fetch` + `@x402/evm` | done |
+| `[x]` | **Test x402 flow: run test script -> verify 402 -> payment -> 200 response** | done |
+| `[x]` | Confirm payment credited to revenue tracker in KV | done |
 
 **Exit criteria:** `/api/analyze` endpoint live. At least one paid request completed via test script.
 
@@ -384,11 +389,11 @@ Manual kill-switch via Vercel KV. Set `aura:paused = true` to skip all ticks; de
 
 | Phase | Est. Hours | Status |
 |-------|-----------|--------|
-| 0 -- Pre-flight (credentials) | 2h | `[ ]` |
+| 0 -- Pre-flight (credentials) | 2h | `[x]` |
 | 1 -- Scaffold (config + docs) | 2h | `[x]` |
 | 2 -- Wallet + DeFi | 3h | `[x]` |
 | 3 -- AI Agent Brain | 3h | `[x]` |
-| 4 -- x402 Service | 2h | `[x]` |
+| 4 -- x402 Service | 2h | `[!]` BLOCKED — see TROUBLESHOOTING_X402.md |
 | 5 -- Dashboard | 4h | `[x]` |
 | 6 -- Deploy Agent Daemon | 1h | `[ ]` |
 | 7 -- Integration Testing | 2h | `[ ]` |
@@ -429,7 +434,7 @@ Start a new Claude Code session and say exactly this:
 - **ERC-8021:** Applied via `ox/erc8021` `Attribution.toDataSuffix` in `viemClient.ts` -- auto-tags ALL txs
 - **Wallet:** Private key in env var -> viem `privateKeyToAccount` (simple, reliable for hackathon)
 - **Aave:** viem-only with inline ABI fragments. MUST approve USDC before supply. No `@aave/contract-helpers`.
-- **x402:** Uses `@x402/next` middleware at project root (`middleware.ts`), NOT custom logic. CDP facilitator for mainnet.
+- **x402:** x402 gating lives in `src/app/api/analyze/route.ts` via `withX402` wrapper (NOT in `middleware.ts` — Edge Runtime can't run `@x402/evm`). CDP facilitator for mainnet with explicit CDP JWT auth headers via `@coinbase/cdp-sdk/auth`.
 - **State shared via:** Vercel KV (Railway agent daemon <-> Vercel dashboard)
 - **0G Storage:** Decision logs only -- uses `@0glabs/0g-ts-sdk@0.3.1` + `ethers` signer, KV fallback if unavailable
 - **Safety floor:** Never drop below $25 USDC total -- hardcoded in tools + system prompt

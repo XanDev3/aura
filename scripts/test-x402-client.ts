@@ -29,9 +29,11 @@ async function main() {
     process.exit(1);
   }
 
-  const privateKey = process.env.AGENT_PRIVATE_KEY as `0x${string}`;
+  // Use TEST_BUYER_PRIVATE_KEY — a separate wallet from the AURA server wallet.
+  // The agent wallet cannot pay itself (from === to causes CDP invalid_payload).
+  const privateKey = (process.env.TEST_BUYER_PRIVATE_KEY || process.env.AGENT_PRIVATE_KEY) as `0x${string}`;
   if (!privateKey) {
-    console.error("Error: AGENT_PRIVATE_KEY not set in .env.local");
+    console.error("Error: TEST_BUYER_PRIVATE_KEY not set in .env.local");
     process.exit(1);
   }
 
@@ -41,6 +43,12 @@ async function main() {
     chain: base,
     transport: http(process.env.BASE_RPC_URL || "https://mainnet.base.org"),
   });
+
+  const agentWallet = process.env.AGENT_WALLET_ADDRESS;
+  if (account.address.toLowerCase() === agentWallet?.toLowerCase()) {
+    console.warn("[x402 Test] WARNING: TEST_BUYER_PRIVATE_KEY is the same as AGENT_WALLET_ADDRESS.");
+    console.warn("[x402 Test]          Self-payment will fail (CDP rejects from === to). Use a separate buyer wallet.");
+  }
 
   console.log(`[x402 Test] Client wallet: ${account.address}`);
   console.log(`[x402 Test] Target: ${vercelUrl}/api/analyze`);
