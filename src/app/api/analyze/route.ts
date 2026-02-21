@@ -9,7 +9,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import type { HTTPRequestContext } from "@x402/core/server";
 import { getAuthHeaders } from "@coinbase/cdp-sdk/auth";
-import { estimatePrice, formatX402Price, MAX_QUERY_CHARS } from "@/lib/pricing/estimator";
+import { estimatePrice, formatX402Price, MAX_QUERY_CHARS, PRICE_FLOOR } from "@/lib/pricing/estimator";
 import { analyzeTools } from "@/lib/agent/analyzeTools";
 
 // Build CDP JWT auth headers for each x402 facilitator endpoint.
@@ -82,7 +82,7 @@ const dynamicPrice = async (context: HTTPRequestContext): Promise<string> => {
     return formatX402Price(price);
   } catch {
     // On any parse error, return floor price — handler will 400 on invalid body
-    return formatX402Price(0.01);
+    return formatX402Price(PRICE_FLOOR);
   }
 };
 
@@ -100,7 +100,7 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
 
     // query is already sliced to MAX_QUERY_CHARS by dynamicPrice()
     let query = cached?.query ?? "";
-    const estimatedPrice = cached?.estimatedPrice ?? 0.01;
+    const estimatedPrice = cached?.estimatedPrice ?? PRICE_FLOOR;
     const queryTruncated = cached?.queryTruncated ?? false;
 
     // Fallback if the WeakMap key access failed (e.g. private field renamed in future package version)
