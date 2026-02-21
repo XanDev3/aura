@@ -10,6 +10,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import type { HTTPRequestContext } from "@x402/core/server";
 import { getAuthHeaders } from "@coinbase/cdp-sdk/auth";
 import { estimatePrice, formatX402Price, MAX_QUERY_CHARS } from "@/lib/pricing/estimator";
+import { analyzeTools } from "@/lib/agent/analyzeTools";
 
 // Build CDP JWT auth headers for each x402 facilitator endpoint.
 // HTTPFacilitatorClient does NOT auto-detect CDP credentials — must be explicit.
@@ -39,6 +40,16 @@ const x402Server = new x402ResourceServer(facilitatorClient).register(
   "eip155:8453",
   new ExactEvmScheme()
 );
+
+const ANALYZE_SYSTEM_PROMPT = `You are AURA, an expert DeFi analyst running on Base mainnet.
+
+You have access to tools with LIVE data. Use them proactively:
+- ANY question about yields, APY, interest rates, or DeFi opportunities → getDeFiYields
+  (Covers all protocols: Aave, Aerodrome, Compound, Curve, and 1000+ more. Filter by chain/token/protocol as needed.)
+- Questions about AURA's wallet, Aave position, earnings, compute costs, or sustainability → getAuraStatus
+
+Never say you lack real-time access — you have it via these tools.
+After fetching live data, provide insightful analysis: what the rates mean, how they compare, what risks exist, and what implications exist for DeFi strategy on Base. Be concise and accurate. Always note that DeFi carries risk.`;
 
 // Body cache: populated by dynamicPrice(), read by handler().
 // WeakMap ensures GC when the request goes out of scope — no memory leak.
@@ -112,10 +123,10 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
       model: anthropic(
         process.env.AGENT_ANALYSIS_MODEL || "claude-sonnet-4-5"
       ),
-      system:
-        "You are AURA, an expert DeFi analyst running on Base mainnet. Provide concise, accurate analysis of DeFi topics. Focus on current yields, protocols, and strategies relevant to Base. Always note that DeFi carries risks.",
+      system: ANALYZE_SYSTEM_PROMPT,
       prompt: `Analyze this DeFi topic: ${query}`,
-      maxSteps: 1,
+      tools: analyzeTools,
+      maxSteps: 5,
     });
 
     // Track actual dynamic revenue (not hardcoded $0.01)
