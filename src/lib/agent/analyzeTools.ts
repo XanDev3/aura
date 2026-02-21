@@ -49,10 +49,15 @@ export const analyzeTools = {
         ),
       topN: z
         .number()
+        .int()
+        .min(1)
+        .max(20)
         .optional()
-        .describe("Maximum number of results to return. Defaults to 5."),
+        .describe("Maximum number of results to return. Defaults to 5. Max 20."),
     }),
     execute: async ({ chain = "Base", token, protocol, topN = 5 }) => {
+      // Defensive clamp — mirrors Zod schema bounds to guard against direct calls or future schema drift.
+      const clampedTopN = Math.min(Math.max(Math.trunc(topN), 1), 20);
       try {
         const res = await fetch("https://yields.llama.fi/pools", {
           headers: { Accept: "application/json" },
@@ -79,7 +84,7 @@ export const analyzeTools = {
             return true;
           })
           .sort((a, b) => (b.apy ?? 0) - (a.apy ?? 0))
-          .slice(0, topN)
+          .slice(0, clampedTopN)
           .map((p) => ({
             protocol: p.project,
             chain: p.chain,
@@ -94,7 +99,7 @@ export const analyzeTools = {
         return {
           pools: filtered,
           totalFound: filtered.length,
-          filters: { chain, token, protocol, topN },
+          filters: { chain, token, protocol, topN: clampedTopN },
           dataSource: "DeFiLlama yields API",
           fetchedAt: new Date().toISOString(),
         };
