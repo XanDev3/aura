@@ -39,33 +39,54 @@ export default function Dashboard() {
     <main className="min-h-screen p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <header className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-2 h-2 rounded-full ${state?.isPaused ? "bg-yellow-500" : "bg-green-500 pulse-dot"}`} />
-          <h1 className="text-2xl font-bold tracking-tight">AURA</h1>
-          <span className="text-slate-400 text-sm">Autonomous Utility Revenue Agent</span>
-          {state?.isPaused && (
-            <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 border border-yellow-700 text-yellow-400 text-xs font-medium">
-              PAUSED
-            </span>
-          )}
+        <div className="flex items-start justify-between">
+          {/* Left: wordmark + full name */}
+          <div>
+            <h1 className="text-7xl font-bold tracking-[0.15em] aura-glow leading-none mb-3">
+              AURA
+            </h1>
+            <div className="flex items-center gap-0 text-[11px] font-mono tracking-wider text-slate-500 uppercase select-none">
+              <span className="text-green-400/80">A</span><span>utonomous</span>
+              <span className="mx-2 text-slate-700">/</span>
+              <span className="text-green-400/80">U</span><span>tility</span>
+              <span className="mx-2 text-slate-700">/</span>
+              <span className="text-green-400/80">R</span><span>evenue</span>
+              <span className="mx-2 text-slate-700">/</span>
+              <span className="text-green-400/80">A</span><span>gent</span>
+            </div>
+          </div>
+
+          {/* Right: system status readout */}
+          <div className="text-right text-[11px] font-mono space-y-1.5 pt-1">
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-slate-600">STATUS</span>
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${
+                  state?.isPaused ? "bg-yellow-500" : "bg-green-500 pulse-dot"
+                }`}
+              />
+              <span className={state?.isPaused ? "text-yellow-400" : "text-green-400"}>
+                {state?.isPaused ? "PAUSED" : "LIVE"}
+              </span>
+            </div>
+            <div className="text-slate-600">BASE / 8453</div>
+            <div className="text-slate-600">AAVE V3 · x402</div>
+            <div className="text-slate-700">
+              {lastUpdated
+                ? `SYNC ${lastUpdated.toLocaleTimeString()}`
+                : "CONNECTING..."}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-slate-400">
-          <span>Base Mainnet</span>
-          <span>·</span>
-          <span>Aave V3 + x402</span>
-          <span>·</span>
-          {lastUpdated ? (
-            <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-          ) : (
-            <span>Loading...</span>
-          )}
-          <span>·</span>
-          <span className="text-slate-400">Refreshes every 30s</span>
+
+        {/* Divider: left green accent fading into dark */}
+        <div className="mt-2 h-px w-full bg-slate-800 relative">
+          <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-green-500/50 to-transparent" />
         </div>
       </header>
 
       {error && (
-        <div className="mb-6 p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">
+        <div className="mb-4 p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">
           Error: {error}
         </div>
       )}

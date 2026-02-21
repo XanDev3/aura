@@ -5,7 +5,7 @@ export function StatusBadge({ state }: { state: AgentState }) {
 
   return (
     <div
-      className={`rounded-xl border p-6 text-center ${
+      className={`rounded-xl border p-4 text-center ${
         isSelfSustaining
           ? "bg-green-950/30 border-green-800"
           : "bg-red-950/20 border-red-900"
