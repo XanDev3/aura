@@ -39,7 +39,7 @@ export const auraTools = {
         getAaveAPY(),
         getDepositedUsdc(),
       ]);
-      const yieldEarned = await updateYieldSnapshot(aTokenBalance, depositedUsdc);
+      const { totalYield: yieldEarned } = await updateYieldSnapshot(aTokenBalance, depositedUsdc);
       return {
         depositedUsdc,
         currentATokenBalance: aTokenBalance,
