@@ -1,11 +1,11 @@
 import type { AgentState } from "@/lib/agent/state";
 
 export function RunwayMeter({ state }: { state: AgentState }) {
-  const { runwayHours, isSelfSustaining, computeCostTodayUsd, x402RevenueUsd, yieldRevenueTotalUsd } = state;
+  const { runwayHours, isSelfSustaining, computeCostTodayUsd, x402RevenueTodayUsd, yieldRevenueTodayUsd } = state;
 
   const DAILY_COMPUTE_USD = 0.50;
   const MIN_X402_PRICE_USD = 0.01;
-  const todayRevenueUsd = x402RevenueUsd + yieldRevenueTotalUsd;
+  const todayRevenueUsd = x402RevenueTodayUsd + yieldRevenueTodayUsd;
   // Progress toward today's break-even (capped at 100%)
   const todayProgress = Math.min(100, (todayRevenueUsd / DAILY_COMPUTE_USD) * 100);
 
@@ -31,7 +31,7 @@ export function RunwayMeter({ state }: { state: AgentState }) {
             ? "bg-green-900/50 text-green-400"
             : "bg-red-900/50 text-red-400"
         }`}>
-          {isSelfSustaining ? `${runwayHours}h funded` : "building up"}
+          {isSelfSustaining ? `fully funded in ${runwayHours}h` : "building up"}
         </span>
       </div>
 
@@ -59,13 +59,13 @@ export function RunwayMeter({ state }: { state: AgentState }) {
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div className="text-center">
           <div className="text-yellow-400 font-semibold">
-            ${yieldRevenueTotalUsd.toFixed(4)}
+            ${yieldRevenueTodayUsd.toFixed(4)}
           </div>
           <div className="text-slate-400 text-sm">Aave Yield</div>
         </div>
         <div className="text-center">
           <div className="text-blue-400 font-semibold">
-            ${x402RevenueUsd.toFixed(4)}
+            ${x402RevenueTodayUsd.toFixed(4)}
           </div>
           <div className="text-slate-400 text-sm">x402 Fees</div>
         </div>

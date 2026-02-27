@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { trackX402Revenue } from "@/lib/tracking/revenue";
+import { trackX402Revenue, getRevenueSummary } from "@/lib/tracking/revenue";
 import { recordComputeCost } from "@/lib/tracking/compute";
 import { readState, writeState, computeDerivedFields } from "@/lib/agent/state";
 import { withX402, x402ResourceServer } from "@x402/next";
@@ -129,26 +129,30 @@ async function handler(req: NextRequest): Promise<NextResponse<unknown>> {
       maxSteps: 5,
     });
 
-    // Track actual dynamic revenue (not hardcoded $0.01)
-    const newX402Total = await trackX402Revenue(estimatedPrice);
-
-    // Record compute cost for this Sonnet call
-    const { totalUsd } = await recordComputeCost({
-      promptTokens: result.usage.promptTokens,
-      completionTokens: result.usage.completionTokens,
-      model: "sonnet",
-    });
+    // Track actual dynamic revenue (not hardcoded $0.01), then read the full
+    // revenue summary so both all-time and today's totals are current.
+    await trackX402Revenue(estimatedPrice);
+    const [revenue, { totalUsd }] = await Promise.all([
+      getRevenueSummary(),
+      recordComputeCost({
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        model: "sonnet",
+      }),
+    ]);
 
     // Compute actual inference cost for transparency metrics
     const actualCost =
       (result.usage.promptTokens / 1_000_000) * 3.0 +
       (result.usage.completionTokens / 1_000_000) * 15.0;
 
-    // Update KV state to reflect the new revenue
+    // Update KV state to reflect new revenue — include today's fields so the
+    // dashboard updates immediately without waiting for the next agent tick.
     const state = await readState();
     const updatedState = computeDerivedFields({
       ...state,
-      x402RevenueUsd: newX402Total,
+      x402RevenueUsd: revenue.x402RevenueUsd,
+      x402RevenueTodayUsd: revenue.x402RevenueTodayUsd,
       computeCostTotalUsd: totalUsd,
     });
     await writeState(updatedState);

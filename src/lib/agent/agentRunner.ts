@@ -88,7 +88,8 @@ export async function runAgentTick(): Promise<TickResult> {
       getRevenueSummary(),
     ]);
 
-    const yieldEarned = await updateYieldSnapshot(aTokenBalance, depositedUsdc);
+    const { totalYield: yieldEarned, todayYield: yieldEarnedToday } =
+      await updateYieldSnapshot(aTokenBalance, depositedUsdc);
 
     const updatedState = computeDerivedFields({
       ...state,
@@ -105,7 +106,9 @@ export async function runAgentTick(): Promise<TickResult> {
       computeCostTodayUsd: todayUsd,
       computeCostTotalUsd: totalUsd,
       x402RevenueUsd: revenue.x402RevenueUsd,
+      x402RevenueTodayUsd: revenue.x402RevenueTodayUsd,
       yieldRevenueTotalUsd: revenue.yieldRevenueTotalUsd,
+      yieldRevenueTodayUsd: yieldEarnedToday,
     });
 
     await writeState(updatedState);

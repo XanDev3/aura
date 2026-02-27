@@ -10,7 +10,7 @@ AURA is a self-sustaining autonomous AI agent that earns more than it spends on 
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | 📊 Dashboard    | **[aura-two-gules.vercel.app](https://aura-two-gules.vercel.app/)**                                                                            |
 | 🔗 Agent Wallet | **[basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0](https://basescan.org/address/0x0968452513515636e0BE413d93Af64e101b299B0)** |
-| 🎥 Demo Video   | **[FILL IN VIDEO LINK]**                                                                                                                       |
+| 🎥 Demo Video   | **[https://youtu.be/jOxbctilDwA)](https://youtu.be/jOxbctilDwA)**                                                                                                                       |
 | 📁 GitHub       | **[github.com/XanDev3/aura](https://github.com/XanDev3/aura)**                                                                                 |
 
 ---

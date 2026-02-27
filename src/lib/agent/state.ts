@@ -38,8 +38,10 @@ export interface AgentState {
   computeCostTodayUsd: number;
   computeCostTotalUsd: number;
   x402RevenueUsd: number;
+  x402RevenueTodayUsd: number;    // x402 fees received today (resets at midnight UTC)
   yieldRevenueTotalUsd: number;
-  totalRevenueUsd: number;        // x402 + yield
+  yieldRevenueTodayUsd: number;   // Aave yield accrued today (delta since start of day)
+  totalRevenueUsd: number;        // x402 + yield (all-time)
   netPnlUsd: number;              // totalRevenue - computeCostTotal
   isSelfSustaining: boolean;      // totalRevenue > computeCostTotal
   runwayHours: number;            // surplus / hourlyComputeRate
@@ -70,7 +72,9 @@ export function defaultState(): AgentState {
     computeCostTodayUsd: 0,
     computeCostTotalUsd: 0,
     x402RevenueUsd: 0,
+    x402RevenueTodayUsd: 0,
     yieldRevenueTotalUsd: 0,
+    yieldRevenueTodayUsd: 0,
     totalRevenueUsd: 0,
     netPnlUsd: 0,
     isSelfSustaining: false,
@@ -82,7 +86,10 @@ export function defaultState(): AgentState {
 
 export async function readState(): Promise<AgentState> {
   const stored = await kv.get<AgentState>(STATE_KEY);
-  return stored ?? defaultState();
+  if (!stored) return defaultState();
+  // Merge with defaults so new fields added after initial deploy get zero values
+  // rather than undefined (handles KV state from older schema versions).
+  return { ...defaultState(), ...stored };
 }
 
 export async function writeState(state: AgentState): Promise<void> {
