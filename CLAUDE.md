@@ -1,7 +1,25 @@
 # CLAUDE.md — AURA Agent Context
 
 > Skills sourced from https://ethskills.com (verified Feb 2026).
-> Read PROGRESS.md + ARCHITECTURE.md before writing any code.
+
+---
+
+## Agent Orientation (Read First)
+
+Before writing any code, read these in order — they're the "second brain" for this project:
+
+1. **`PROGRESS.md`** — current state, file map, open todos, how to resume
+2. **`docs/CONTEXT.md`** — mental model, codebase map, key decisions, landmines/gotchas
+3. **`ARCHITECTURE.md`** — only if you need deep technical detail on a specific area
+
+## Session End Protocol
+
+At the end of every working session, **always** remind the user to update the second brain:
+
+- **`MEMORY.md`** (`.claude/projects/.../memory/MEMORY.md`) — any new patterns or confirmed behaviors discovered this session
+- **`docs/CONTEXT.md`** — if a bug was fixed, add the root cause to "Landmines"; if an architectural decision was made, add a one-liner to the decisions table
+
+Prompt: _"Before we wrap up — do you want me to update MEMORY.md or docs/CONTEXT.md with anything new from this session?"_
 
 ---
 
